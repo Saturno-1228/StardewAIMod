@@ -146,7 +146,7 @@ namespace StardewAIMod.Menus
 
                 // Datos extra: Objeto en mano, cumpleaños, y estado del jugador
                 string holdingItem = Game1.player.ActiveObject != null ? Game1.player.ActiveObject.DisplayName : "Nothing";
-                bool isBirthday = _npc.isBirthday(Game1.currentSeason, Game1.dayOfMonth);
+                bool isBirthday = _npc.isBirthday();
                 string playerStatus = "Healthy and energetic.";
                 if (Game1.player.health < Game1.player.maxHealth / 3)
                     playerStatus = "Looks wounded or very sick.";
