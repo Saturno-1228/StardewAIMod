@@ -27,14 +27,14 @@ namespace StardewAIMod.Menus
         private bool _isWaitingForResponse = false;
         private string _errorMessage = "";
 
-        public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config)
+        public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config, string modDirectory)
             : base(12, Game1.uiViewport.Height - 300, 800, 200, showUpperRightCloseButton: true)
         {
             _npc = npc;
             _veniceApi = veniceApi;
             _memoryService = memoryService;
             _config = config;
-            _promptBuilder = new PromptBuilder();
+            _promptBuilder = new PromptBuilder(modDirectory);
 
             // Configurar TextBox (estilo chat multijugador)
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
@@ -163,8 +163,12 @@ namespace StardewAIMod.Menus
                 // Guardar como memoria opcionalmente
                 _memoryService.AddMemory(_npc.Name, $"Player said: {playerText}. I replied: {reply}", 1, "neutral");
 
+                // Formatear la respuesta para que las oraciones largas se dividan correctamente
+                // usando el comando de pausa/salto de diálogo de Stardew Valley: #$b#
+                string formattedReply = FormatDialogueText(reply);
+
                 // Show response via standard dialogue box!
-                _npc.CurrentDialogue.Push(new Dialogue(_npc, null, reply));
+                _npc.CurrentDialogue.Push(new Dialogue(_npc, null, formattedReply));
                 Game1.drawDialogue(_npc);
 
                 // Exit this custom chat menu since we show the standard dialogue
@@ -210,6 +214,33 @@ namespace StardewAIMod.Menus
             drawMouse(b);
 
             base.draw(b);
+        }
+
+        private string FormatDialogueText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            // Enfoque basado en longitud: inserta #$b# si un bloque supera los 150 caracteres
+            string[] words = text.Split(' ');
+            string currentBlock = "";
+            string finalResult = "";
+            int charCount = 0;
+
+            foreach (var word in words)
+            {
+                if (charCount + word.Length > 150)
+                {
+                    finalResult += currentBlock.TrimEnd() + "#$b#";
+                    currentBlock = "";
+                    charCount = 0;
+                }
+                currentBlock += word + " ";
+                charCount += word.Length + 1;
+            }
+            finalResult += currentBlock.TrimEnd();
+
+            return finalResult;
         }
 
         protected override void cleanupBeforeExit()

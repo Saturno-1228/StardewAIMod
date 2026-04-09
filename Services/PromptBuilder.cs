@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Text.Json;
 using StardewAIMod.Models;
 
 namespace StardewAIMod.Services
@@ -10,6 +12,14 @@ namespace StardewAIMod.Services
     /// </summary>
     public class PromptBuilder
     {
+        private readonly string _modDirectory;
+        private readonly Dictionary<string, string> _personalityCache = new Dictionary<string, string>();
+
+        public PromptBuilder(string modDirectory)
+        {
+            _modDirectory = modDirectory;
+        }
+
         /// <summary>
         /// Genera el system prompt completo para un NPC.
         /// </summary>
@@ -54,8 +64,17 @@ namespace StardewAIMod.Services
             if (memory.Memories.Count > 0)
             {
                 sb.AppendLine("[MEMORIES - Things you remember about this player]");
-                foreach (var mem in memory.Memories)
+
+                // Enviar solo un subconjunto reciente o limitado para no exceder los tokens.
+                // Ordenamos por fecha o asumimos que ya vienen en orden.
+                // Tomamos un máximo de las últimas 10 memorias (por ejemplo) para evitar desbordar el contexto
+                int maxMemoriesToInclude = 10;
+                var memorias = memory.Memories;
+                int startIdx = System.Math.Max(0, memorias.Count - maxMemoriesToInclude);
+
+                for (int i = startIdx; i < memorias.Count; i++)
                 {
+                    var mem = memorias[i];
                     sb.AppendLine($"- ({mem.GameDate}) {mem.Description} [felt: {mem.Emotion}]");
                 }
                 sb.AppendLine();
@@ -101,27 +120,46 @@ namespace StardewAIMod.Services
 
         /// <summary>
         /// Personalidad base de cada NPC.
-        /// TODO: Mover a archivos individuales en /Prompts/ cuando crezca.
+        /// Carga desde archivos individuales en /Prompts/Personalities/.
         /// </summary>
         private string GetBasePersonality(string npcName)
         {
-            // ── PLACEHOLDER: Salomé diseñará cada personalidad a fondo ──
-            return npcName switch
+            if (_personalityCache.TryGetValue(npcName, out string cachedPersonality))
             {
-                "Abigail" => "Adventurous, loves exploring caves, plays video games, eats quartz, dark humor, purple hair she dyes herself. Daughter of Pierre and Caroline. Secretly interested in the occult.",
+                return cachedPersonality;
+            }
 
-                "Shane" => "Depressed, alcoholic, works at JojaMart, loves chickens and pizza. Rough exterior but deeply caring once trust is earned. Struggles with self-worth.",
+            string promptsDir = Path.Combine(_modDirectory, "Prompts", "Personalities");
+            string filePath = Path.Combine(promptsDir, $"{npcName}.json");
+            string defaultPath = Path.Combine(promptsDir, "Default.json");
 
-                "Haley" => "Initially vain and materialistic, but grows into a kind and adventurous person. Loves photography and sunflowers. Sister of Emily.",
+            string targetPath = File.Exists(filePath) ? filePath : (File.Exists(defaultPath) ? defaultPath : null);
 
-                "Sebastian" => "Introverted programmer, lives in his mom's basement, smokes, rides a motorcycle, plays tabletop games. Dreams of leaving the valley. Maru is his half-sister.",
+            if (targetPath != null)
+            {
+                try
+                {
+                    string json = File.ReadAllText(targetPath);
+                    using JsonDocument doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("Personality", out JsonElement prop))
+                    {
+                        string personality = prop.GetString();
+                        if (targetPath == defaultPath)
+                        {
+                             // Insert NPC name in the default personality text
+                             personality = personality.Replace("A villager", $"A villager named {npcName}");
+                        }
+                        _personalityCache[npcName] = personality;
+                        return personality;
+                    }
+                }
+                catch
+                {
+                    // Ignore parsing errors and fallback
+                }
+            }
 
-                "Penny" => "Shy, kind, loves reading and teaching. Lives in a trailer with her alcoholic mother Pam. Dreams of giving children a better future than she had.",
-
-                "Sam" => "Energetic, plays guitar, loves skateboarding and pizza. Best friends with Sebastian and Abigail. Has a younger brother Vincent.",
-
-                _ => $"A villager in Pelican Town named {npcName}. Respond in character based on what is known about this character in Stardew Valley."
-            };
+            return $"A villager in Pelican Town named {npcName}. Respond in character based on what is known about this character in Stardew Valley.";
         }
     }
 }

@@ -147,7 +147,17 @@ namespace StardewAIMod
                 LogLevel.Debug
             );
 
-            // TODO: Actualizar contexto diario de NPCs
+            // Actualizar contexto diario: Agregar una memoria para todos los NPCs indicando el inicio del nuevo día y sus condiciones.
+            string dailyContext = $"New day started. Season: {season}, Day: {day}, Weather: {weather}.";
+
+            // Recorremos todos los NPCs para agregar la memoria de inicio del día
+            foreach (var npc in Utility.getAllCharacters())
+            {
+                if (npc.isVillager())
+                {
+                    this.Memory.AddMemory(npc.Name, dailyContext, 1, "neutral");
+                }
+            }
         }
 
         /// <summary>
@@ -195,7 +205,8 @@ namespace StardewAIMod
                         targetNpc,
                         this.VeniceApi,
                         this.Memory,
-                        this.Config
+                        this.Config,
+                        this.Helper.DirectoryPath
                     );
                 }
             }
