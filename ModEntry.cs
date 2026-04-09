@@ -165,9 +165,14 @@ namespace StardewAIMod
                 if (targetNpc != null)
                 {
                     this.Monitor.Log($"[Studio Corvus] 💬 Initiating chat with {targetNpc.Name}", LogLevel.Info);
-                    // TODO: Abrir interfaz de chat interactiva
-                    // Por ahora, solo abrimos el diálogo estándar o enviamos un mensaje de prueba
-                    Game1.activeClickableMenu = new StardewValley.Menus.DialogueBox($"I'm ready to chat, but the UI isn't finished yet!");
+
+                    // Abrir interfaz de chat interactiva
+                    Game1.activeClickableMenu = new Menus.ChatMenu(
+                        targetNpc,
+                        this.VeniceApi,
+                        this.Memory,
+                        this.Config
+                    );
                 }
             }
         }
