@@ -201,7 +201,11 @@ namespace StardewAIMod.Services
             sb.AppendLine("[ACTIONS]");
             sb.AppendLine("You can perform special actions by including command tags in your response.");
             sb.AppendLine("  $follow = Agree to follow the player if they ask and you like them enough (minimum 'Best Friend' or 'Friend' depending on your personality). Do NOT use this if you are busy or dislike them.");
-            sb.AppendLine("Example: 'Sure, I'll walk with you for a bit. $follow'");
+            sb.AppendLine("  $favor[ItemName, Amount, \"Letter Text\"] = If the player asks for a favor to get an item, and you have at least 'Friend' status, AND the item matches your 'Expertise' or 'Profession', you can agree to get it for them.");
+            sb.AppendLine("    - You will mail it to them the next day.");
+            sb.AppendLine("    - IMPORTANT: Include this command silently at the end of your message. Provide the actual English name of the item.");
+            sb.AppendLine("    - Make sure to provide a short letter text to accompany the delivery inside the quotes.");
+            sb.AppendLine("Example: 'I'll find some wood for you this afternoon. $favor[Wood, 20, \"Here is the wood you asked for yesterday. Watch out for splinters! -Robin\"]'");
             sb.AppendLine();
 
             // ── EMOCIONES ──
@@ -241,6 +245,8 @@ namespace StardewAIMod.Services
                 {
                     string json = File.ReadAllText(targetPath);
                     using JsonDocument doc = JsonDocument.Parse(json);
+
+                    var sb = new StringBuilder();
                     if (doc.RootElement.TryGetProperty("Personality", out JsonElement prop))
                     {
                         string personality = prop.GetString();
@@ -249,9 +255,26 @@ namespace StardewAIMod.Services
                             // Insert NPC name in the default personality text
                             personality = personality.Replace("A villager", $"A villager named {npcName}");
                         }
-                        _personalityCache[npcName] = personality;
-                        return personality;
+                        sb.AppendLine(personality);
                     }
+
+                    if (doc.RootElement.TryGetProperty("Profession", out JsonElement profProp))
+                        sb.AppendLine($"Profession: {profProp.GetString()}");
+
+                    if (doc.RootElement.TryGetProperty("Expertise", out JsonElement expProp))
+                    {
+                        // To prevent LLM hallucinations, enforce only existing item names.
+                        string expertiseRaw = expProp.GetString();
+                        sb.AppendLine($"Expertise / Items you can provide: {expertiseRaw}");
+                        sb.AppendLine($"(CRITICAL: You must only offer specific item names if you know they exist. Some examples from your world: {string.Join(", ", System.Linq.Enumerable.Take(StardewAIMod.ModEntry.ItemCatalog.Keys, 10))})");
+                    }
+
+                    if (doc.RootElement.TryGetProperty("MapKnowledge", out JsonElement mapProp))
+                        sb.AppendLine($"Map Knowledge: {mapProp.GetString()}");
+
+                    string finalPersonality = sb.ToString().TrimEnd();
+                    _personalityCache[npcName] = finalPersonality;
+                    return finalPersonality;
                 }
                 catch
                 {
