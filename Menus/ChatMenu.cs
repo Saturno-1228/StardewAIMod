@@ -144,6 +144,15 @@ namespace StardewAIMod.Menus
                     : "You and the player are mostly alone here.";
 
 
+                // Datos extra: Objeto en mano, cumpleaños, y estado del jugador
+                string holdingItem = Game1.player.ActiveObject != null ? Game1.player.ActiveObject.DisplayName : "Nothing";
+                bool isBirthday = _npc.isBirthday(Game1.currentSeason, Game1.dayOfMonth);
+                string playerStatus = "Healthy and energetic.";
+                if (Game1.player.health < Game1.player.maxHealth / 3)
+                    playerStatus = "Looks wounded or very sick.";
+                else if (Game1.player.Stamina < 20)
+                    playerStatus = "Looks extremely exhausted and ready to pass out.";
+
                 var currentContext = new Dictionary<string, string>
                 {
                     { "Season", Game1.currentSeason },
@@ -152,7 +161,10 @@ namespace StardewAIMod.Menus
                     { "Weather", Game1.isRaining ? "Raining" : (Game1.isSnowing ? "Snowing" : "Sunny") },
                     { "Location", Game1.currentLocation.Name },
                     { "Player Clothing", playerClothing },
-                    { "Environment", environmentNotes }
+                    { "Environment", environmentNotes },
+                    { "Player is holding", holdingItem },
+                    { "Player Physical Status", playerStatus },
+                    { "Is it your Birthday today?", isBirthday ? "YES! You expect people to congratulate you." : "No." }
                 };
 
                 string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext);
@@ -166,8 +178,15 @@ namespace StardewAIMod.Menus
                 // Guardar respuesta de la IA en historial
                 _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
 
-                // Guardar como memoria a largo plazo opcionalmente
-                _memoryService.AddMemory(_npc.Name, $"Player said: {playerText}. I replied: {reply}", 1, "neutral");
+                // Consecuencias de la charla (Amistad dinámica basada en comandos de emoción)
+                if (reply.Contains("$h") || reply.Contains("$l"))
+                {
+                    Game1.player.changeFriendship(10, _npc); // +10 puntos (aprox 1/25 de corazón)
+                }
+                else if (reply.Contains("$a"))
+                {
+                    Game1.player.changeFriendship(-10, _npc); // -10 puntos
+                }
 
                 // Formatear la respuesta para que las oraciones largas se dividan correctamente
                 // usando el comando de pausa/salto de diálogo de Stardew Valley: #$b#
