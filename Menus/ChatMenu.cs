@@ -27,6 +27,8 @@ namespace StardewAIMod.Menus
         private bool _isWaitingForResponse = false;
         private string _errorMessage = "";
 
+        private readonly string _modDirectory;
+
         public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config, string modDirectory)
             : base(12, Game1.uiViewport.Height - 300, 800, 200, showUpperRightCloseButton: true)
         {
@@ -34,6 +36,7 @@ namespace StardewAIMod.Menus
             _veniceApi = veniceApi;
             _memoryService = memoryService;
             _config = config;
+            _modDirectory = modDirectory;
             _promptBuilder = new PromptBuilder(modDirectory);
 
             // Configurar TextBox (estilo chat multijugador)
@@ -141,6 +144,15 @@ namespace StardewAIMod.Menus
                     : "You and the player are mostly alone here.";
 
 
+                // Datos extra: Objeto en mano, cumpleaños, y estado del jugador
+                string holdingItem = Game1.player.ActiveObject != null ? Game1.player.ActiveObject.DisplayName : "Nothing";
+                bool isBirthday = _npc.isBirthday(Game1.currentSeason, Game1.dayOfMonth);
+                string playerStatus = "Healthy and energetic.";
+                if (Game1.player.health < Game1.player.maxHealth / 3)
+                    playerStatus = "Looks wounded or very sick.";
+                else if (Game1.player.Stamina < 20)
+                    playerStatus = "Looks extremely exhausted and ready to pass out.";
+
                 var currentContext = new Dictionary<string, string>
                 {
                     { "Season", Game1.currentSeason },
@@ -149,23 +161,46 @@ namespace StardewAIMod.Menus
                     { "Weather", Game1.isRaining ? "Raining" : (Game1.isSnowing ? "Snowing" : "Sunny") },
                     { "Location", Game1.currentLocation.Name },
                     { "Player Clothing", playerClothing },
-                    { "Environment", environmentNotes }
+                    { "Environment", environmentNotes },
+                    { "Player is holding", holdingItem },
+                    { "Player Physical Status", playerStatus },
+                    { "Is it your Birthday today?", isBirthday ? "YES! You expect people to congratulate you." : "No." }
                 };
 
                 string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext);
 
-                // Llamar a Venice AI
-                string reply = await _veniceApi.SendMessageAsync(systemPrompt, new List<StardewAIMod.Models.ChatMessage>
-                {
-                    new StardewAIMod.Models.ChatMessage { Role = "player", Content = playerText }
-                });
+                // Añadir el mensaje actual al historial
+                _memoryService.AddToConversationHistory(_npc.Name, "player", playerText);
 
-                // Guardar como memoria opcionalmente
-                _memoryService.AddMemory(_npc.Name, $"Player said: {playerText}. I replied: {reply}", 1, "neutral");
+                // Llamar a Venice AI
+                string reply = await _veniceApi.SendMessageAsync(systemPrompt, memory.ConversationHistory);
+
+                // Guardar respuesta de la IA en historial
+                _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
+
+                // Consecuencias de la charla (Amistad dinámica basada en comandos de emoción)
+                if (reply.Contains("$h") || reply.Contains("$l"))
+                {
+                    Game1.player.changeFriendship(10, _npc); // +10 puntos (aprox 1/25 de corazón)
+                }
+                else if (reply.Contains("$a"))
+                {
+                    Game1.player.changeFriendship(-10, _npc); // -10 puntos
+                }
 
                 // Formatear la respuesta para que las oraciones largas se dividan correctamente
                 // usando el comando de pausa/salto de diálogo de Stardew Valley: #$b#
                 string formattedReply = FormatDialogueText(reply);
+
+                // Configurar que una vez termine el diálogo se vuelva a abrir el ChatMenu
+                Game1.afterDialogues = new Game1.afterFadeFunction(() =>
+                {
+                    // Evitar que se abra si estamos haciendo otra cosa o en otro menú principal
+                    if (Game1.activeClickableMenu == null)
+                    {
+                        Game1.activeClickableMenu = new ChatMenu(_npc, _veniceApi, _memoryService, _config, _modDirectory);
+                    }
+                });
 
                 // Show response via standard dialogue box!
                 _npc.CurrentDialogue.Push(new Dialogue(_npc, null, formattedReply));

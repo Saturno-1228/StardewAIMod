@@ -59,7 +59,11 @@ namespace StardewAIMod.Services
                     model = _model,
                     messages = messages,
                     max_tokens = 300,
-                    temperature = 0.8
+                    temperature = 0.8,
+                    venice_parameters = new
+                    {
+                        include_venice_system_prompt = false
+                    }
                 };
 
                 string json = JsonSerializer.Serialize(requestBody);

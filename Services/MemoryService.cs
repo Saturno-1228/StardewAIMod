@@ -42,6 +42,25 @@ namespace StardewAIMod.Services
         }
 
         /// <summary>
+        /// Agrega un mensaje al historial reciente de la conversación.
+        /// Retiene solo los últimos mensajes para mantener el contexto.
+        /// </summary>
+        public void AddToConversationHistory(string npcName, string role, string content)
+        {
+            var memory = GetMemory(npcName);
+            memory.ConversationHistory.Add(new ChatMessage { Role = role, Content = content });
+
+            // Mantener solo los últimos 20 mensajes de la conversación
+            if (memory.ConversationHistory.Count > 20)
+            {
+                // Dejamos los últimos 20 (tomar al final)
+                memory.ConversationHistory = memory.ConversationHistory
+                    .Skip(memory.ConversationHistory.Count - 20)
+                    .ToList();
+            }
+        }
+
+        /// <summary>
         /// Agrega un recuerdo a un NPC.
         /// Si supera el máximo, elimina los menos importantes.
         /// </summary>

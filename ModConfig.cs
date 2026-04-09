@@ -12,7 +12,7 @@ namespace StardewAIMod
         // ═══════════════════════════════════════
 
         /// <summary>Modelo de lenguaje a usar.</summary>
-        public string VeniceModel { get; set; } = "llama-3.3-70b";
+        public string VeniceModel { get; set; } = "zai-org-glm-5";
 
         /// <summary>Endpoint base de Venice API.</summary>
         public string VeniceEndpoint { get; set; } = "https://api.venice.ai/api/v1/chat/completions";
