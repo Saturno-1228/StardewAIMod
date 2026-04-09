@@ -25,6 +25,22 @@ namespace StardewAIMod
 
                 try
                 {
+                    // IDs: Mermaid's Pendant (460), Void Ghost Pendant (808)
+                    bool isMermaidsPendant = o.ParentSheetIndex == 460 || o.ItemId == "460";
+                    bool isVoidGhostPendant = o.ParentSheetIndex == 808 || o.ItemId == "808";
+
+                    if (isMermaidsPendant || isVoidGhostPendant)
+                    {
+                        // In 1.6, if the NPC receives it and hasn't rejected it, we assume it's a success
+                        // since receiveGift is called. If they accepted it, we log the memory.
+                        // Ideally we could check if giver.spouse == __instance.Name, but doing it on receipt is close enough based on instructions.
+                        bool asRoommate = isVoidGhostPendant;
+                        string engagementMemoryDesc = asRoommate ? "Player asked me to be their roommate, and I accepted!" : "Player proposed to me, and I accepted!";
+                        Memory.AddMemory(__instance.Name, engagementMemoryDesc, 5, "love");
+                        Monitor.Log($"[Studio Corvus] 💍 Engagement memory injected for {__instance.Name}.", LogLevel.Info);
+                        return; // Don't log it as a regular gift
+                    }
+
                     int taste = __instance.getGiftTasteForThisItem(o);
                     int importance = 1;
                     string emotion = "neutral";
@@ -62,26 +78,6 @@ namespace StardewAIMod
                 catch (Exception ex)
                 {
                     Monitor.Log($"[Studio Corvus] Error injecting gift memory: {ex}", LogLevel.Error);
-                }
-            }
-        }
-
-        [HarmonyPatch(typeof(NPC), nameof(NPC.engagementResponse))]
-        public static class EngagementResponsePatch
-        {
-            public static void Postfix(NPC __instance, Farmer who, bool asRoommate)
-            {
-                if (Memory == null) return;
-
-                try
-                {
-                    string memoryDesc = asRoommate ? "Player asked me to be their roommate, and I accepted!" : "Player proposed to me, and I accepted!";
-                    Memory.AddMemory(__instance.Name, memoryDesc, 5, "love");
-                    Monitor.Log($"[Studio Corvus] 💍 Engagement memory injected for {__instance.Name}.", LogLevel.Info);
-                }
-                catch (Exception ex)
-                {
-                    Monitor.Log($"[Studio Corvus] Error injecting engagement memory: {ex}", LogLevel.Error);
                 }
             }
         }
