@@ -64,6 +64,7 @@ namespace StardewAIMod.Services
             if (currentContext != null && currentContext.Count > 0)
             {
                 sb.AppendLine("[CURRENT CONTEXT]");
+                sb.AppendLine($"- Game Language Code: {StardewValley.LocalizedContentManager.CurrentLanguageCode.ToString()}");
                 foreach (var kvp in currentContext)
                 {
                     sb.AppendLine($"- {kvp.Key}: {kvp.Value}");
@@ -74,6 +75,7 @@ namespace StardewAIMod.Services
             // ── REGLAS DE COMPORTAMIENTO ──
             sb.AppendLine("[BEHAVIOR RULES]");
             sb.AppendLine("- Respond naturally, as a real person would in a small farming town.");
+            sb.AppendLine("- You MUST reply in the language specified by the Game Language Code.");
             sb.AppendLine("- Keep responses between 1 to 4 sentences unless the topic is deep.");
             sb.AppendLine("- Reference your memories when relevant.");
             sb.AppendLine("- Your emotions and friendship level affect your tone.");
