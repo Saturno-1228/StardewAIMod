@@ -24,7 +24,7 @@ namespace StardewAIMod.Menus
 
         private TextBox _textBox;
         private ClickableTextureComponent _sendButton;
-        private List<ChatMessage> _conversationHistory = new List<ChatMessage>();
+        private List<StardewAIMod.Models.ChatMessage> _conversationHistory = new List<StardewAIMod.Models.ChatMessage>();
         private string _npcResponse = "";
         private bool _isWaitingForResponse = false;
         private string _errorMessage = "";
@@ -59,7 +59,7 @@ namespace StardewAIMod.Menus
             );
 
             // Mensaje de bienvenida inicial (local, sin gastar API)
-            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = $"* {_npc.Name} is listening... *" });
+            _conversationHistory.Add(new StardewAIMod.Models.ChatMessage { Role = "assistant", Content = $"* {_npc.Name} is listening... *" });
         }
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
@@ -96,7 +96,7 @@ namespace StardewAIMod.Menus
             if (string.IsNullOrEmpty(playerText)) return;
 
             // Añadir mensaje del jugador a la UI
-            _conversationHistory.Add(new ChatMessage { Role = "player", Content = playerText });
+            _conversationHistory.Add(new StardewAIMod.Models.ChatMessage { Role = "player", Content = playerText });
             _textBox.Text = "";
             _isWaitingForResponse = true;
             _npcResponse = "Thinking...";
@@ -125,7 +125,7 @@ namespace StardewAIMod.Menus
                 string reply = await _veniceApi.SendMessageAsync(systemPrompt, _conversationHistory);
 
                 // Añadir respuesta a la UI
-                _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = reply });
+                _conversationHistory.Add(new StardewAIMod.Models.ChatMessage { Role = "assistant", Content = reply });
 
                 // Guardar como memoria opcionalmente (simplificado por ahora)
                 _memoryService.AddMemory(_npc.Name, $"Player said: {playerText}. I replied: {reply}", 1, "neutral");
@@ -190,7 +190,7 @@ namespace StardewAIMod.Menus
             base.draw(b);
         }
 
-        public override void cleanupBeforeExit()
+        protected override void cleanupBeforeExit()
         {
             Game1.keyboardDispatcher.Subscriber = null;
             base.cleanupBeforeExit();
