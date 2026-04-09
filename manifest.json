@@ -1,0 +1,12 @@
+{
+  "Name": "Stardew AI Mod",
+  "Author": "Studio Corvus",
+  "Version": "0.1.0",
+  "Description": "Venice AI-powered NPCs that remember you, talk to you, and feel alive.",
+  "UniqueID": "StudioCorvus.StardewAIMod",
+  "EntryDll": "StardewAIMod.dll",
+  "MinimumApiVersion": "3.0.0",
+  "ContentPackFor": null,
+  "Dependencies": [],
+  "UpdateKeys": []
+}
