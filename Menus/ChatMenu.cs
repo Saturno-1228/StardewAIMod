@@ -14,7 +14,7 @@ namespace StardewAIMod.Menus
     /// <summary>
     /// Interfaz interactiva para escribirle al NPC.
     /// </summary>
-    public class ChatMenu : IClickableMenu
+    public class ChatMenu : DialogueBox
     {
         private readonly NPC _npc;
         private readonly VeniceApiService _veniceApi;
@@ -24,13 +24,15 @@ namespace StardewAIMod.Menus
 
         private TextBox _textBox;
         private ClickableTextureComponent _sendButton;
+        private ClickableTextureComponent _toggleButton;
+        private bool _isTextBoxVisible = false;
         private bool _isWaitingForResponse = false;
         private string _errorMessage = "";
 
         private readonly string _modDirectory;
 
         public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config, string modDirectory)
-            : base(12, Game1.uiViewport.Height - 300, 800, 200, showUpperRightCloseButton: true)
+            : base(new Dialogue(npc, null, "Say something..."))
         {
             _npc = npc;
             _veniceApi = veniceApi;
@@ -43,20 +45,27 @@ namespace StardewAIMod.Menus
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
-                X = this.xPositionOnScreen + 20,
-                Y = this.yPositionOnScreen + 80,
-                Width = this.width - 120,
+                X = this.xPositionOnScreen,
+                Y = this.yPositionOnScreen + this.height,
+                Width = this.width - 80,
                 Height = 50,
-                Selected = true
+                Selected = false
             };
-            Game1.keyboardDispatcher.Subscriber = _textBox;
 
             // Botón enviar
             _sendButton = new ClickableTextureComponent(
-                new Rectangle(this.xPositionOnScreen + this.width - 80, this.yPositionOnScreen + 70, 64, 64),
+                new Rectangle(this.xPositionOnScreen + this.width - 80, this.yPositionOnScreen + this.height, 64, 64),
                 Game1.mouseCursors,
                 new Rectangle(128, 256, 64, 64), // Icono de flecha
                 1f
+            );
+
+            // Botón de intervención (Toggle)
+            _toggleButton = new ClickableTextureComponent(
+                new Rectangle(this.xPositionOnScreen - 64, this.yPositionOnScreen + this.height - 64, 64, 64),
+                Game1.mouseCursors,
+                new Rectangle(16, 368, 16, 16), // Icono de teclado/chat desde mouseCursors. Ajustar si es necesario. (Podemos usar el icono de chat: rect 160, 256 o similar). Usaremos un icono genérico y un scale de 4f.
+                4f
             );
         }
 
@@ -64,17 +73,37 @@ namespace StardewAIMod.Menus
         {
             base.receiveLeftClick(x, y, playSound);
 
-            _textBox.Update();
-
-            if (_sendButton.containsPoint(x, y) && !_isWaitingForResponse)
+            if (_toggleButton.containsPoint(x, y))
             {
-                SendMessage();
+                _isTextBoxVisible = !_isTextBoxVisible;
+                if (_isTextBoxVisible)
+                {
+                    _textBox.Selected = true;
+                    Game1.keyboardDispatcher.Subscriber = _textBox;
+                }
+                else
+                {
+                    _textBox.Selected = false;
+                    Game1.keyboardDispatcher.Subscriber = null;
+                }
+                if (playSound) Game1.playSound("smallSelect");
+                return;
+            }
+
+            if (_isTextBoxVisible)
+            {
+                _textBox.Update();
+
+                if (_sendButton.containsPoint(x, y) && !_isWaitingForResponse)
+                {
+                    SendMessage();
+                }
             }
         }
 
         public override void receiveKeyPress(Keys key)
         {
-            if (key == Keys.Enter && !_isWaitingForResponse)
+            if (_isTextBoxVisible && key == Keys.Enter && !_isWaitingForResponse)
             {
                 SendMessage();
             }
@@ -85,7 +114,7 @@ namespace StardewAIMod.Menus
             else
             {
                 // Solo llamar a base.receiveKeyPress si el TextBox NO está activo
-                if (!_textBox.Selected)
+                if (!_isTextBoxVisible || !_textBox.Selected)
                 {
                     base.receiveKeyPress(key);
                 }
@@ -260,33 +289,34 @@ namespace StardewAIMod.Menus
 
         public override void draw(SpriteBatch b)
         {
-            // Fondo
-            Game1.drawDialogueBox(this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height, speaker: false, drawOnlyBox: true);
+            base.draw(b);
 
-            // Título
-            Utility.drawTextWithShadow(b, $"Say something to {_npc.Name}...", Game1.dialogueFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + 40), Game1.textColor);
+            // Draw the toggle button
+            _toggleButton.draw(b);
 
-            // Estado de carga o error
-            if (_isWaitingForResponse)
+            // If the text box is visible, draw it and its elements
+            if (_isTextBoxVisible)
             {
-                Utility.drawTextWithShadow(b, "Thinking...", Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + 140), Color.Gray);
-            }
-            if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + 140), Color.Red);
-            }
+                // TextBox y Botón
+                _textBox.Draw(b);
+                if (!_isWaitingForResponse)
+                {
+                    _sendButton.draw(b);
+                }
 
-            // TextBox y Botón
-            _textBox.Draw(b);
-            if (!_isWaitingForResponse)
-            {
-                _sendButton.draw(b);
+                // Estado de carga o error
+                if (_isWaitingForResponse)
+                {
+                    Utility.drawTextWithShadow(b, "Thinking...", Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + this.height + 60), Color.Gray);
+                }
+                if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + this.height + 60), Color.Red);
+                }
             }
 
             // Puntero del mouse
             drawMouse(b);
-
-            base.draw(b);
         }
 
         private string FormatDialogueText(string text)
@@ -294,15 +324,15 @@ namespace StardewAIMod.Menus
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            // Enfoque basado en longitud: inserta #$b# si un bloque supera los 150 caracteres
-            string[] words = text.Split(' ');
+            // Enfoque basado en longitud respetando los límites de palabras (Word-Boundary Pagination)
+            string[] words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             string currentBlock = "";
             string finalResult = "";
             int charCount = 0;
 
             foreach (var word in words)
             {
-                if (charCount + word.Length > 150)
+                if (charCount + word.Length > 120) // Límite seguro de 120 caracteres por página
                 {
                     finalResult += currentBlock.TrimEnd() + "#$b#";
                     currentBlock = "";
