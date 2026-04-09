@@ -313,7 +313,7 @@ namespace StardewAIMod.Menus
             return finalResult;
         }
 
-        public override void cleanupBeforeExit()
+        protected override void cleanupBeforeExit()
         {
             Game1.keyboardDispatcher.Subscriber = null;
             base.cleanupBeforeExit();
