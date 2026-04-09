@@ -166,8 +166,15 @@ namespace StardewAIMod
                     (int)(Game1.player.GetGrabTile().X),
                     (int)(Game1.player.GetGrabTile().Y)
                 );
+                foreach (var npc in Game1.currentLocation.characters)
+                {
+                    if (npc.Tile == grabTile)
+                    {
+                        targetNpc = npc;
+                        break;
+                    }
+                }
 
-                targetNpc = Game1.currentLocation.isCharacterAt(grabTile);
 
                 if (targetNpc != null)
                 {
