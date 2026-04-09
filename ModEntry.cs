@@ -163,7 +163,7 @@ namespace StardewAIMod
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
             int day = Game1.dayOfMonth;
-            string season = Game1.currentSeason;
+            StardewValley.Season season = Game1.season;
             string weather = Game1.isRaining ? "Raining" : (Game1.isSnowing ? "Snowing" : "Sunny");
 
             this.Monitor.Log(
@@ -181,7 +181,7 @@ namespace StardewAIMod
             // Recorremos todos los NPCs para agregar la memoria de inicio del día
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (npc.isVillager())
+                if (npc.IsVillager)
                 {
                     this.Memory.AddMemory(npc.Name, dailyContext, 1, "neutral");
                 }

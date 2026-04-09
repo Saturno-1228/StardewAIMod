@@ -126,12 +126,25 @@ namespace StardewAIMod.Services
         {
             try
             {
-                return $"{StardewValley.Game1.currentSeason} {StardewValley.Game1.dayOfMonth}, Year {StardewValley.Game1.year}";
+                return $"{StardewValley.Game1.season} {StardewValley.Game1.dayOfMonth}, Year {StardewValley.Game1.year}";
             }
             catch
             {
                 return "Unknown";
             }
+        }
+
+        public IEnumerable<string> GetAllNpcsWithMemories()
+        {
+            return _memories.Keys;
+        }
+
+        public List<string> GetPendingFavorsAndClear(string npcName)
+        {
+            var memory = GetMemory(npcName);
+            var copy = memory.PendingFavors.ToList();
+            memory.PendingFavors.Clear();
+            return copy;
         }
     }
 }
