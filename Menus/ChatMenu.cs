@@ -175,17 +175,42 @@ namespace StardewAIMod.Menus
                 // Llamar a Venice AI
                 string reply = await _veniceApi.SendMessageAsync(systemPrompt, memory.ConversationHistory);
 
+                if (reply.StartsWith("[") && (reply.Contains("Error") || reply.Contains("No response")))
+                {
+                    _errorMessage = "They need a moment to think. Please wait a few seconds.";
+                    return;
+                }
+
+                // Limpiar mensaje de error previo si la respuesta fue exitosa
+                _errorMessage = "";
+
                 // Guardar respuesta de la IA en historial
                 _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
 
                 // Consecuencias de la charla (Amistad dinámica basada en comandos de emoción)
-                if (reply.Contains("$h") || reply.Contains("$l"))
+                if (reply.Contains("$l"))
                 {
-                    Game1.player.changeFriendship(10, _npc); // +10 puntos (aprox 1/25 de corazón)
+                    Game1.player.changeFriendship(15, _npc); // +15 puntos
+                }
+                else if (reply.Contains("$h"))
+                {
+                    Game1.player.changeFriendship(10, _npc); // +10 puntos
                 }
                 else if (reply.Contains("$a"))
                 {
-                    Game1.player.changeFriendship(-10, _npc); // -10 puntos
+                    Game1.player.changeFriendship(-20, _npc); // -20 puntos (los insultos cuestan más)
+                }
+
+                // Follow Mechanic
+                if (reply.Contains("$follow"))
+                {
+                    // This is a placeholder for the actual follow logic which requires
+                    // SMAPI NPC controllers to pathfind towards the player over time.
+                    // Stardew Valley 1.6 requires setting a temporary schedule or using
+                    // 'PathFindController' with custom logic to update the target to the player's position.
+
+                    // TODO: Implement 'follower' state on NPC.
+                    Game1.addHUDMessage(new HUDMessage($"{_npc.Name} is now following you! (WIP feature)", HUDMessage.newQuest_type));
                 }
 
                 // Formatear la respuesta para que las oraciones largas se dividan correctamente

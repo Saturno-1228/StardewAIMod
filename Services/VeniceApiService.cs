@@ -19,6 +19,10 @@ namespace StardewAIMod.Services
         private readonly string _model;
         private readonly string _endpoint;
 
+        // Cooldown configuration
+        private DateTime _lastRequestTime = DateTime.MinValue;
+        private readonly TimeSpan _minTimeBetweenRequests = TimeSpan.FromSeconds(3); // 3 seconds cooldown
+
         public VeniceApiService(string apiKey, string model, string endpoint)
         {
             _apiKey = apiKey;
@@ -39,9 +43,21 @@ namespace StardewAIMod.Services
             string systemPrompt,
             List<ChatMessage> conversationHistory)
         {
-            try
+            // Cooldown logic
+            TimeSpan timeSinceLastRequest = DateTime.Now - _lastRequestTime;
+            if (timeSinceLastRequest < _minTimeBetweenRequests)
             {
-                // Construir mensajes en formato OpenAI
+                await Task.Delay(_minTimeBetweenRequests - timeSinceLastRequest);
+            }
+
+            int maxRetries = 3;
+            int currentTry = 0;
+
+            while (currentTry < maxRetries)
+            {
+                try
+                {
+                    // Construir mensajes en formato OpenAI
                 var messages = new List<object>
                 {
                     new { role = "system", content = systemPrompt }
@@ -69,16 +85,31 @@ namespace StardewAIMod.Services
                 string json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                // Enviar request
-                var response = await _httpClient.PostAsync(_endpoint, content);
-                string responseJson = await response.Content.ReadAsStringAsync();
+                    // Update last request time right before making the call
+                    _lastRequestTime = DateTime.Now;
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    return $"[Venice API Error: {response.StatusCode}]";
-                }
+                    // Enviar request
+                    var response = await _httpClient.PostAsync(_endpoint, content);
+                    string responseJson = await response.Content.ReadAsStringAsync();
 
-                // Parsear respuesta
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        if ((int)response.StatusCode == 429) // Too Many Requests
+                        {
+                            currentTry++;
+                            if (currentTry >= maxRetries)
+                            {
+                                return "[Venice API Error: Too many requests, please wait a moment.]";
+                            }
+                            // Exponential backoff: 2s, 4s, 8s...
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, currentTry)));
+                            continue; // Retry
+                        }
+
+                        return $"[Venice API Error: {response.StatusCode}]";
+                    }
+
+                    // Parsear respuesta
                 using var doc = JsonDocument.Parse(responseJson);
                 var root = doc.RootElement;
                 string reply = root
@@ -87,12 +118,15 @@ namespace StardewAIMod.Services
                     .GetProperty("content")
                     .GetString();
 
-                return reply ?? "[No response from Venice]";
+                    return reply ?? "[No response from Venice]";
+                }
+                catch (Exception ex)
+                {
+                    return $"[Error: {ex.Message}]";
+                }
             }
-            catch (Exception ex)
-            {
-                return $"[Error: {ex.Message}]";
-            }
+
+            return "[Venice API Error: Max retries reached.]";
         }
 
         /// <summary>
