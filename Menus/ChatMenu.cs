@@ -110,17 +110,27 @@ namespace StardewAIMod.Menus
                 memory.FriendshipHearts = Game1.player.getFriendshipHeartLevelForNPC(_npc.Name);
 
                 string relationship = "Stranger";
-                if (Game1.player.spouse == _npc.Name) {
+                if (Game1.player.spouse == _npc.Name)
+                {
                     relationship = "Spouse";
-                } else if (Game1.player.friendshipData.ContainsKey(_npc.Name)) {
+                }
+                else if (Game1.player.friendshipData.ContainsKey(_npc.Name))
+                {
                     var friendship = Game1.player.friendshipData[_npc.Name];
-                    if (friendship.IsDating()) {
+                    if (friendship.IsDating())
+                    {
                         relationship = "Boyfriend/Girlfriend";
-                    } else if (memory.FriendshipHearts >= 8) {
+                    }
+                    else if (memory.FriendshipHearts >= 8)
+                    {
                         relationship = "Best Friend";
-                    } else if (memory.FriendshipHearts >= 4) {
+                    }
+                    else if (memory.FriendshipHearts >= 4)
+                    {
                         relationship = "Friend";
-                    } else if (memory.FriendshipHearts > 0) {
+                    }
+                    else if (memory.FriendshipHearts > 0)
+                    {
                         relationship = "Acquaintance";
                     }
                 }
@@ -167,7 +177,7 @@ namespace StardewAIMod.Menus
                     { "Is it your Birthday today?", isBirthday ? "YES! You expect people to congratulate you." : "No." }
                 };
 
-                string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext);
+                string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext, playerText);
 
                 // Añadir el mensaje actual al historial
                 _memoryService.AddToConversationHistory(_npc.Name, "player", playerText);
@@ -260,7 +270,7 @@ namespace StardewAIMod.Menus
             }
             if (!string.IsNullOrEmpty(_errorMessage))
             {
-                 Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + 140), Color.Red);
+                Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, this.yPositionOnScreen + 140), Color.Red);
             }
 
             // TextBox y Botón
@@ -303,7 +313,7 @@ namespace StardewAIMod.Menus
             return finalResult;
         }
 
-        protected override void cleanupBeforeExit()
+        public override void cleanupBeforeExit()
         {
             Game1.keyboardDispatcher.Subscriber = null;
             base.cleanupBeforeExit();

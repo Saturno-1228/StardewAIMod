@@ -14,10 +14,95 @@ namespace StardewAIMod.Services
     {
         private readonly string _modDirectory;
         private readonly Dictionary<string, string> _personalityCache = new Dictionary<string, string>();
+        private readonly Dictionary<string, LoreData> _loreCache = new Dictionary<string, LoreData>();
 
         public PromptBuilder(string modDirectory)
         {
             _modDirectory = modDirectory;
+        }
+
+        private string ExtractRelevantLore(string npcName, string playerMessage)
+        {
+            if (string.IsNullOrWhiteSpace(playerMessage))
+                return "";
+
+            var relevantLore = new List<string>();
+
+            // Load General Lore
+            var generalLore = LoadLore("General.json");
+            foreach (var topic in generalLore.Topics)
+            {
+                foreach (var keyword in topic.Keywords)
+                {
+                    string pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(keyword) + @"\b";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(playerMessage, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        relevantLore.Add($"- {topic.Info}");
+                        break; // Prevent adding the same topic multiple times if multiple keywords match
+                    }
+                }
+            }
+
+            // Load NPC Specific Lore
+            var npcLore = LoadLore($"{npcName}.json");
+            foreach (var topic in npcLore.Topics)
+            {
+                foreach (var keyword in topic.Keywords)
+                {
+                    string pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(keyword) + @"\b";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(playerMessage, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        relevantLore.Add($"- {topic.Info}");
+                        break;
+                    }
+                }
+            }
+
+            if (relevantLore.Count > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("[RELEVANT KNOWLEDGE]");
+                sb.AppendLine("Here is some specific knowledge you possess about topics the player just mentioned:");
+                foreach (var lore in relevantLore)
+                {
+                    sb.AppendLine(lore);
+                }
+                sb.AppendLine();
+                return sb.ToString();
+            }
+
+            return "";
+        }
+
+        private LoreData LoadLore(string loreFileName)
+        {
+            if (_loreCache.TryGetValue(loreFileName, out LoreData cachedLore))
+            {
+                return cachedLore;
+            }
+
+            string lorePath = Path.Combine(_modDirectory, "Prompts", "Lore", loreFileName);
+            if (File.Exists(lorePath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(lorePath);
+                    var loreData = JsonSerializer.Deserialize<LoreData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (loreData != null)
+                    {
+                        _loreCache[loreFileName] = loreData;
+                        return loreData;
+                    }
+                }
+                catch
+                {
+                    // Ignore errors, return empty
+                }
+            }
+
+            var emptyLore = new LoreData();
+            _loreCache[loreFileName] = emptyLore;
+            return emptyLore;
         }
 
         /// <summary>
@@ -30,7 +115,8 @@ namespace StardewAIMod.Services
         public string BuildSystemPrompt(
             string npcName,
             NpcMemory memory,
-            Dictionary<string, string> currentContext)
+            Dictionary<string, string> currentContext,
+            string playerMessage)
         {
             var sb = new StringBuilder();
 
@@ -90,6 +176,13 @@ namespace StardewAIMod.Services
                     sb.AppendLine($"- {kvp.Key}: {kvp.Value}");
                 }
                 sb.AppendLine();
+            }
+
+            // ── RELEVANT LORE / KNOWLEDGE ──
+            string loreText = ExtractRelevantLore(npcName, playerMessage);
+            if (!string.IsNullOrEmpty(loreText))
+            {
+                sb.AppendLine(loreText);
             }
 
             // ── REGLAS DE COMPORTAMIENTO ──
@@ -153,8 +246,8 @@ namespace StardewAIMod.Services
                         string personality = prop.GetString();
                         if (targetPath == defaultPath)
                         {
-                             // Insert NPC name in the default personality text
-                             personality = personality.Replace("A villager", $"A villager named {npcName}");
+                            // Insert NPC name in the default personality text
+                            personality = personality.Replace("A villager", $"A villager named {npcName}");
                         }
                         _personalityCache[npcName] = personality;
                         return personality;

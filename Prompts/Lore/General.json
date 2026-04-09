@@ -1,0 +1,16 @@
+{
+  "Topics": [
+    {
+      "Keywords": ["mine", "minas", "cueva", "cave", "monster", "monstruo", "ore", "mineral"],
+      "Info": "The local mines are located in the mountains north of town. They are filled with monsters and valuable ores."
+    },
+    {
+      "Keywords": ["joja", "mart", "morris"],
+      "Info": "JojaMart is the big corporate supermarket in town, run by Morris. They compete with Pierre's General Store."
+    },
+    {
+      "Keywords": ["yoba", "god", "dios", "altar", "shrine"],
+      "Info": "Yoba is the creator deity. There is a shrine to Yoba in the local Pierre's shop."
+    }
+  ]
+}

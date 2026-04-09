@@ -1,0 +1,20 @@
+{
+  "Topics": [
+    {
+      "Keywords": ["pierre", "dad", "papá", "padre"],
+      "Info": "Pierre is my dad. He runs the general store. We argue sometimes because he wants me to be more traditional."
+    },
+    {
+      "Keywords": ["caroline", "mom", "mamá", "madre"],
+      "Info": "Caroline is my mom. She worries about my lifestyle and the time I spend hanging around the graveyard."
+    },
+    {
+      "Keywords": ["sword", "espada", "adventure", "aventura"],
+      "Info": "I have my own sword and I really want to go adventuring in the mines, but my parents won't let me."
+    },
+    {
+      "Keywords": ["seb", "sebastian", "sebby", "sam", "band", "banda"],
+      "Info": "I hang out with Sebastian and Sam. We sometimes play music together, I play the drums."
+    }
+  ]
+}
