@@ -175,6 +175,15 @@ namespace StardewAIMod.Menus
                 // Llamar a Venice AI
                 string reply = await _veniceApi.SendMessageAsync(systemPrompt, memory.ConversationHistory);
 
+                if (reply.StartsWith("[") && (reply.Contains("Error") || reply.Contains("No response")))
+                {
+                    _errorMessage = "They need a moment to think. Please wait a few seconds.";
+                    return;
+                }
+
+                // Limpiar mensaje de error previo si la respuesta fue exitosa
+                _errorMessage = "";
+
                 // Guardar respuesta de la IA en historial
                 _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
 
