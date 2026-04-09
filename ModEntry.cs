@@ -18,6 +18,10 @@ namespace StardewAIMod
         // Credenciales privadas (secrets.json)
         private SecretConfig Secrets;
 
+        // Servicios
+        private Services.VeniceApiService VeniceApi;
+        private Services.MemoryService Memory;
+
         /// <summary>
         /// Método principal. Se ejecuta cuando SMAPI carga el mod.
         /// </summary>
@@ -91,8 +95,16 @@ namespace StardewAIMod
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             this.Monitor.Log("[Studio Corvus] 🎮 Game launched. AI services initializing...", LogLevel.Info);
-            // TODO: Inicializar VeniceApiService con this.Secrets.VeniceApiKey
-            // TODO: Inicializar MemoryService
+
+            // Inicializar VeniceApiService
+            this.VeniceApi = new Services.VeniceApiService(
+                this.Secrets.VeniceApiKey,
+                this.Config.VeniceModel,
+                this.Config.VeniceEndpoint
+            );
+
+            // Inicializar MemoryService
+            this.Memory = new Services.MemoryService(this.Helper, this.Monitor, this.Config.MaxMemoryPerNpc);
         }
 
         /// <summary>
@@ -106,7 +118,9 @@ namespace StardewAIMod
                 $"[Studio Corvus] 📂 Save loaded: {playerName} @ {farmName} Farm",
                 LogLevel.Info
             );
-            // TODO: Cargar memorias de NPCs desde archivo
+
+            // Cargar memorias de NPCs desde archivo
+            this.Memory.LoadAll();
         }
 
         /// <summary>
@@ -116,10 +130,13 @@ namespace StardewAIMod
         {
             int day = Game1.dayOfMonth;
             string season = Game1.currentSeason;
+            string weather = Game1.isRaining ? "Raining" : (Game1.isSnowing ? "Snowing" : "Sunny");
+
             this.Monitor.Log(
-                $"[Studio Corvus] 🌅 New day: {season} {day}",
+                $"[Studio Corvus] 🌅 New day: {season} {day}, Weather: {weather}",
                 LogLevel.Debug
             );
+
             // TODO: Actualizar contexto diario de NPCs
         }
 
@@ -131,9 +148,40 @@ namespace StardewAIMod
             if (!Context.IsWorldReady)
                 return;
 
-            // TODO: Detectar tecla de chat (configurable)
-            // TODO: Detectar si el jugador está frente a un NPC
-            // TODO: Abrir interfaz de chat
+            // Detectar tecla de chat (configurable)
+            if (e.Button.ToString() == this.Config.ChatKey)
+            {
+                // Prevenir abrir el chat si no hay API Key configurada
+                if (string.IsNullOrEmpty(this.Secrets.VeniceApiKey))
+                {
+                    Game1.addHUDMessage(new HUDMessage("Stardew AI: Missing Venice API Key in secrets.json!", HUDMessage.error_type));
+                    return;
+                }
+
+                // Detectar si el jugador está frente a un NPC
+                NPC targetNpc = null;
+
+                // Intentar encontrar al NPC frente al jugador
+                var grabTile = new Microsoft.Xna.Framework.Vector2(
+                    (int)(Game1.player.GetGrabTile().X),
+                    (int)(Game1.player.GetGrabTile().Y)
+                );
+
+                targetNpc = Game1.currentLocation.isCharacterAt(grabTile);
+
+                if (targetNpc != null)
+                {
+                    this.Monitor.Log($"[Studio Corvus] 💬 Initiating chat with {targetNpc.Name}", LogLevel.Info);
+
+                    // Abrir interfaz de chat interactiva
+                    Game1.activeClickableMenu = new Menus.ChatMenu(
+                        targetNpc,
+                        this.VeniceApi,
+                        this.Memory,
+                        this.Config
+                    );
+                }
+            }
         }
     }
 }
