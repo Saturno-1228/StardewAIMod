@@ -151,6 +151,13 @@ namespace StardewAIMod
             // Detectar tecla de chat (configurable)
             if (e.Button.ToString() == this.Config.ChatKey)
             {
+                // Prevenir abrir el chat si no hay API Key configurada
+                if (string.IsNullOrEmpty(this.Secrets.VeniceApiKey))
+                {
+                    Game1.addHUDMessage(new HUDMessage("Stardew AI: Missing Venice API Key in secrets.json!", HUDMessage.error_type));
+                    return;
+                }
+
                 // Detectar si el jugador está frente a un NPC
                 NPC targetNpc = null;
 

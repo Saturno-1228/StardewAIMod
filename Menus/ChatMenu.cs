@@ -39,7 +39,8 @@ namespace StardewAIMod.Menus
             _promptBuilder = new PromptBuilder();
 
             // Configurar TextBox
-            _textBox = new TextBox(null, null, Game1.dialogueFont, Game1.textColor)
+            Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
+            _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
                 X = this.xPositionOnScreen + 50,
                 Y = this.yPositionOnScreen + this.height - 100,
@@ -104,6 +105,10 @@ namespace StardewAIMod.Menus
             {
                 // Construir Contexto
                 var memory = _memoryService.GetMemory(_npc.Name);
+
+                // Actualizar datos en vivo del jugador
+                memory.PlayerName = Game1.player.Name;
+                memory.FriendshipHearts = Game1.player.getFriendshipHeartLevelForNPC(_npc.Name);
 
                 var currentContext = new Dictionary<string, string>
                 {
