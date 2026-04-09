@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using StardewAIMod.Models;
 using StardewModdingAPI;
@@ -58,9 +59,11 @@ namespace StardewAIMod.Services
             // Recortar si supera el máximo
             if (memory.Memories.Count > _maxMemoryPerNpc)
             {
-                // Ordenar por importancia y quedarse con los más importantes
-                memory.Memories.Sort((a, b) => b.Importance.CompareTo(a.Importance));
-                memory.Memories = memory.Memories.GetRange(0, _maxMemoryPerNpc);
+                // Ordenar por importancia desc, luego quedarse con los últimos
+                memory.Memories = memory.Memories
+                    .OrderByDescending(m => m.Importance)
+                    .Take(_maxMemoryPerNpc)
+                    .ToList();
             }
 
             _monitor.Log($"[Memory] {npcName} recorded: {description}", StardewModdingAPI.LogLevel.Debug);

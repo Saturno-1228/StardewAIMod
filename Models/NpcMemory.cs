@@ -17,6 +17,9 @@ namespace StardewAIMod.Models
         /// <summary>Nivel de amistad actual (0 a 14 corazones).</summary>
         public int FriendshipHearts { get; set; } = 0;
 
+        /// <summary>Estado de la relación (desconocido, amigo, novio/a, esposo/a).</summary>
+        public string RelationshipStatus { get; set; } = "Stranger";
+
         /// <summary>Lista de eventos/acciones que el NPC recuerda.</summary>
         public List<MemoryEntry> Memories { get; set; } = new List<MemoryEntry>();
 

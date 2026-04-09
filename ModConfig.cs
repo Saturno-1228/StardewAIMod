@@ -42,6 +42,6 @@ namespace StardewAIMod
         // ═══════════════════════════════════════
 
         /// <summary>Tecla para abrir chat con NPC cercano.</summary>
-        public string ChatKey { get; set; } = "T";
+        public string ChatKey { get; set; } = "N";
     }
 }

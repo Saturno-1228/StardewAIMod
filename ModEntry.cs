@@ -54,6 +54,7 @@ namespace StardewAIMod
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.Saving += this.OnSaving;
         }
 
         /// <summary>
@@ -121,6 +122,15 @@ namespace StardewAIMod
 
             // Cargar memorias de NPCs desde archivo
             this.Memory.LoadAll();
+        }
+
+        /// <summary>
+        /// Se ejecuta cuando el juego se está guardando.
+        /// </summary>
+        private void OnSaving(object sender, SavingEventArgs e)
+        {
+            this.Monitor.Log("[Studio Corvus] 💾 Saving game... Saving AI memories.", LogLevel.Info);
+            this.Memory.SaveAll();
         }
 
         /// <summary>
