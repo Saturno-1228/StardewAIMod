@@ -34,6 +34,9 @@ namespace StardewAIMod.Models
 
         /// <summary>Notas libres que la IA puede agregar.</summary>
         public string AiNotes { get; set; } = "";
+
+        /// <summary>Historial de la conversación reciente (a corto plazo).</summary>
+        public List<ChatMessage> ConversationHistory { get; set; } = new List<ChatMessage>();
     }
 
     /// <summary>
