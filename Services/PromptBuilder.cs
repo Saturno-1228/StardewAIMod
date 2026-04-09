@@ -104,15 +104,22 @@ namespace StardewAIMod.Services
             sb.AppendLine("- If dating or married, be affectionate according to your personality.");
             sb.AppendLine();
 
+            // ── ACTIONS ──
+            sb.AppendLine("[ACTIONS]");
+            sb.AppendLine("You can perform special actions by including command tags in your response.");
+            sb.AppendLine("  $follow = Agree to follow the player if they ask and you like them enough (minimum 'Best Friend' or 'Friend' depending on your personality). Do NOT use this if you are busy or dislike them.");
+            sb.AppendLine("Example: 'Sure, I'll walk with you for a bit. $follow'");
+            sb.AppendLine();
+
             // ── EMOCIONES ──
-            sb.AppendLine("[EMOTIONS - VITAL]");
+            sb.AppendLine("[EMOTIONS & FRIENDSHIP - VITAL]");
             sb.AppendLine("You must include Stardew Valley emotion commands in your response to change your portrait expression.");
-            sb.AppendLine("Use these commands anywhere in your text:");
-            sb.AppendLine("  $h = happy");
-            sb.AppendLine("  $s = sad");
-            sb.AppendLine("  $a = angry");
-            sb.AppendLine("  $u = unique/surprised");
-            sb.AppendLine("  $l = love (if dating/spouse)");
+            sb.AppendLine("These commands directly affect the player's friendship points with you in-game:");
+            sb.AppendLine("  $h = happy (Use if the player is kind, friendly, or helpful. Increases friendship)");
+            sb.AppendLine("  $l = love (Use if the player is romantic and you are dating/married. Greatly increases friendship)");
+            sb.AppendLine("  $a = angry (Use if the player is rude, insulting, or annoying. Decreases friendship)");
+            sb.AppendLine("  $s = sad (Situational. No friendship change)");
+            sb.AppendLine("  $u = unique/surprised (Situational. No friendship change)");
             sb.AppendLine("Example: 'Oh, you brought me this? $h Thank you so much!'");
 
             return sb.ToString();
