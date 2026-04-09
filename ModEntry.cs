@@ -22,6 +22,9 @@ namespace StardewAIMod
         private Services.VeniceApiService VeniceApi;
         private Services.MemoryService Memory;
 
+        // Catálogo de Items
+        public static System.Collections.Generic.Dictionary<string, string> ItemCatalog = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// Método principal. Se ejecuta cuando SMAPI carga el mod.
         /// </summary>
@@ -106,6 +109,13 @@ namespace StardewAIMod
 
             // Inicializar MemoryService
             this.Memory = new Services.MemoryService(this.Helper, this.Monitor, this.Config.MaxMemoryPerNpc);
+
+            // Inicializar y Aplicar Harmony Patches
+            var harmony = new HarmonyLib.Harmony(this.ModManifest.UniqueID);
+            HarmonyPatches.Initialize(this.Monitor, this.Memory);
+            harmony.PatchAll();
+
+            this.Monitor.Log("[Studio Corvus] 💉 Harmony patches applied.", LogLevel.Info);
         }
 
         /// <summary>
@@ -122,6 +132,20 @@ namespace StardewAIMod
 
             // Cargar memorias de NPCs desde archivo
             this.Memory.LoadAll();
+
+            // Populate ItemCatalog from Game1.objectData
+            ItemCatalog.Clear();
+            if (Game1.objectData != null)
+            {
+                foreach (var kvp in Game1.objectData)
+                {
+                    if (kvp.Value != null && !string.IsNullOrEmpty(kvp.Value.Name))
+                    {
+                        ItemCatalog[kvp.Value.Name] = kvp.Key;
+                    }
+                }
+                this.Monitor.Log($"[Studio Corvus] 📦 Loaded {ItemCatalog.Count} items into ItemCatalog.", LogLevel.Info);
+            }
         }
 
         /// <summary>
@@ -147,8 +171,12 @@ namespace StardewAIMod
                 LogLevel.Debug
             );
 
+            // Verificar si es día de festival
+            bool isFestival = Utility.isFestivalDay(day, season);
+            string festivalInfo = isFestival ? $" Today is a festival day!" : "";
+
             // Actualizar contexto diario: Agregar una memoria para todos los NPCs indicando el inicio del nuevo día y sus condiciones.
-            string dailyContext = $"New day started. Season: {season}, Day: {day}, Weather: {weather}.";
+            string dailyContext = $"New day started. Season: {season}, Day: {day}, Weather: {weather}.{festivalInfo}";
 
             // Recorremos todos los NPCs para agregar la memoria de inicio del día
             foreach (var npc in Utility.getAllCharacters())
@@ -156,6 +184,41 @@ namespace StardewAIMod
                 if (npc.isVillager())
                 {
                     this.Memory.AddMemory(npc.Name, dailyContext, 1, "neutral");
+                }
+            }
+
+            // Process pending favors
+            foreach (var npcName in this.Memory.GetAllNpcsWithMemories())
+            {
+                var favors = this.Memory.GetPendingFavorsAndClear(npcName);
+                foreach (var favorArgs in favors)
+                {
+                    // Expecting format: ItemName, Amount, "Letter Text"
+                    var match = System.Text.RegularExpressions.Regex.Match(favorArgs, @"^([^,]+),\s*(\d+),\s*""(.*)""$");
+                    if (match.Success)
+                    {
+                        string itemName = match.Groups[1].Value.Trim();
+                        int amount = int.Parse(match.Groups[2].Value);
+                        string letterText = match.Groups[3].Value;
+
+                        if (ItemCatalog.TryGetValue(itemName, out string itemId))
+                        {
+                            // Add to Mailbox
+                            string mailId = $"StardewAIMod_Favor_{npcName}_{Game1.Date.TotalDays}_{System.Guid.NewGuid()}";
+
+                            // 1.6 Mail format: "Text %item object (O)ItemId Amount %%"
+                            string mailContent = $"{letterText} %item object (O){itemId} {amount} %%";
+
+                            Game1.content.Load<System.Collections.Generic.Dictionary<string, string>>("Data\\mail").Add(mailId, mailContent);
+                            Game1.player.mailbox.Add(mailId);
+
+                            this.Monitor.Log($"[Studio Corvus] ✉️ Favor delivered from {npcName}: {amount}x {itemName}", LogLevel.Info);
+                        }
+                        else
+                        {
+                            this.Monitor.Log($"[Studio Corvus] ⚠️ Could not find item ID for favor item: {itemName}. Aborting silently.", LogLevel.Warn);
+                        }
+                    }
                 }
             }
         }

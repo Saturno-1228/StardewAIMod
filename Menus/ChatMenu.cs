@@ -227,19 +227,22 @@ namespace StardewAIMod.Menus
                 // usando el comando de pausa/salto de diálogo de Stardew Valley: #$b#
                 string formattedReply = FormatDialogueText(reply);
 
-                // Configurar que una vez termine el diálogo se vuelva a abrir el ChatMenu
-                Game1.afterDialogues = new Game1.afterFadeFunction(() =>
-                {
-                    // Evitar que se abra si estamos haciendo otra cosa o en otro menú principal
-                    if (Game1.activeClickableMenu == null)
-                    {
-                        Game1.activeClickableMenu = new ChatMenu(_npc, _veniceApi, _memoryService, _config, _modDirectory);
-                    }
-                });
-
                 // Show response via standard dialogue box!
                 _npc.CurrentDialogue.Push(new Dialogue(_npc, null, formattedReply));
                 Game1.drawDialogue(_npc);
+
+                // Configurar que una vez termine el diálogo se vuelva a abrir el ChatMenu de forma segura
+                Game1.afterDialogues = new Game1.afterFadeFunction(() =>
+                {
+                    // Evitar reabrir si hay una cinemática/evento o si el jugador ya se alejó
+                    if (Game1.CurrentEvent == null && Game1.activeClickableMenu == null)
+                    {
+                        if (Vector2.Distance(Game1.player.Tile, _npc.Tile) < 3)
+                        {
+                            Game1.activeClickableMenu = new ChatMenu(_npc, _veniceApi, _memoryService, _config, _modDirectory);
+                        }
+                    }
+                });
 
                 // Exit this custom chat menu since we show the standard dialogue
                 this.exitThisMenu();
