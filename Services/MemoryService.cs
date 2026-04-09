@@ -48,7 +48,7 @@ namespace StardewAIMod.Services
         public void AddToConversationHistory(string npcName, string role, string content)
         {
             var memory = GetMemory(npcName);
-            memory.ConversationHistory.Add(new ChatMessage { Role = role, Content = content });
+            memory.ConversationHistory.Add(new StardewAIMod.Models.ChatMessage { Role = role, Content = content });
 
             // Mantener solo los últimos 20 mensajes de la conversación
             if (memory.ConversationHistory.Count > 20)

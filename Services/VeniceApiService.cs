@@ -41,7 +41,7 @@ namespace StardewAIMod.Services
         /// <returns>Texto de respuesta del NPC.</returns>
         public async Task<string> SendMessageAsync(
             string systemPrompt,
-            List<ChatMessage> conversationHistory)
+            List<StardewAIMod.Models.ChatMessage> conversationHistory)
         {
             // Cooldown logic
             TimeSpan timeSinceLastRequest = DateTime.Now - _lastRequestTime;
@@ -58,32 +58,32 @@ namespace StardewAIMod.Services
                 try
                 {
                     // Construir mensajes en formato OpenAI
-                var messages = new List<object>
+                    var messages = new List<object>
                 {
                     new { role = "system", content = systemPrompt }
                 };
 
-                foreach (var msg in conversationHistory)
-                {
-                    string role = msg.Role == "player" ? "user" : "assistant";
-                    messages.Add(new { role = role, content = msg.Content });
-                }
-
-                // Construir el body del request
-                var requestBody = new
-                {
-                    model = _model,
-                    messages = messages,
-                    max_tokens = 300,
-                    temperature = 0.8,
-                    venice_parameters = new
+                    foreach (var msg in conversationHistory)
                     {
-                        include_venice_system_prompt = false
+                        string role = msg.Role == "player" ? "user" : "assistant";
+                        messages.Add(new { role = role, content = msg.Content });
                     }
-                };
 
-                string json = JsonSerializer.Serialize(requestBody);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    // Construir el body del request
+                    var requestBody = new
+                    {
+                        model = _model,
+                        messages = messages,
+                        max_tokens = 300,
+                        temperature = 0.8,
+                        venice_parameters = new
+                        {
+                            include_venice_system_prompt = false
+                        }
+                    };
+
+                    string json = JsonSerializer.Serialize(requestBody);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     // Update last request time right before making the call
                     _lastRequestTime = DateTime.Now;
@@ -110,13 +110,13 @@ namespace StardewAIMod.Services
                     }
 
                     // Parsear respuesta
-                using var doc = JsonDocument.Parse(responseJson);
-                var root = doc.RootElement;
-                string reply = root
-                    .GetProperty("choices")[0]
-                    .GetProperty("message")
-                    .GetProperty("content")
-                    .GetString();
+                    using var doc = JsonDocument.Parse(responseJson);
+                    var root = doc.RootElement;
+                    string reply = root
+                        .GetProperty("choices")[0]
+                        .GetProperty("message")
+                        .GetProperty("content")
+                        .GetString();
 
                     return reply ?? "[No response from Venice]";
                 }
@@ -136,9 +136,9 @@ namespace StardewAIMod.Services
         {
             try
             {
-                var testMessages = new List<ChatMessage>
+                var testMessages = new List<StardewAIMod.Models.ChatMessage>
                 {
-                    new ChatMessage { Role = "player", Content = "Hello" }
+                    new StardewAIMod.Models.ChatMessage { Role = "player", Content = "Hello" }
                 };
                 string result = await SendMessageAsync("Reply with: CONNECTION OK", testMessages);
                 return !result.StartsWith("[");
