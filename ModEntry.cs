@@ -145,7 +145,7 @@ namespace StardewAIMod
         /// </summary>
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {
-            if (!Context.IsWorldReady)
+            if (!Context.IsWorldReady || Game1.activeClickableMenu != null)
                 return;
 
             // Detectar tecla de chat (configurable)
