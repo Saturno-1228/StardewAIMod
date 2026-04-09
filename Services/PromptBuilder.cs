@@ -39,6 +39,7 @@ namespace StardewAIMod.Services
             sb.AppendLine($"[RELATIONSHIP WITH PLAYER]");
             sb.AppendLine($"Player name: {memory.PlayerName}");
             sb.AppendLine($"Friendship level: {memory.FriendshipHearts} hearts out of 14");
+            sb.AppendLine($"Relationship status: {memory.RelationshipStatus}");
             sb.AppendLine($"Your current mood: {memory.CurrentMood}");
 
             if (!string.IsNullOrEmpty(memory.LastGiftReceived))
@@ -76,11 +77,24 @@ namespace StardewAIMod.Services
             sb.AppendLine("[BEHAVIOR RULES]");
             sb.AppendLine("- Respond naturally, as a real person would in a small farming town.");
             sb.AppendLine("- You MUST reply in the language specified by the Game Language Code.");
-            sb.AppendLine("- Keep responses between 1 to 4 sentences unless the topic is deep.");
+            sb.AppendLine("- Keep your responses concise, typically 1 to 2 sentences. Only provide longer answers if the topic strongly requires it.");
+            sb.AppendLine("- Strongly adhere to your personality and your specific relationship status with the player (e.g., stranger, friend, dating, spouse).");
             sb.AppendLine("- Reference your memories when relevant.");
-            sb.AppendLine("- Your emotions and friendship level affect your tone.");
+            sb.AppendLine("- Your emotions and friendship level MUST affect your tone.");
             sb.AppendLine("- Low friendship = distant/cold. High friendship = warm/open.");
-            sb.AppendLine("- If you are romanceable and at 8+ hearts, allow subtle romantic tension.");
+            sb.AppendLine("- If dating or married, be affectionate according to your personality.");
+            sb.AppendLine();
+
+            // ── EMOCIONES ──
+            sb.AppendLine("[EMOTIONS - VITAL]");
+            sb.AppendLine("You must include Stardew Valley emotion commands in your response to change your portrait expression.");
+            sb.AppendLine("Use these commands anywhere in your text:");
+            sb.AppendLine("  $h = happy");
+            sb.AppendLine("  $s = sad");
+            sb.AppendLine("  $a = angry");
+            sb.AppendLine("  $u = unique/surprised");
+            sb.AppendLine("  $l = love (if dating/spouse)");
+            sb.AppendLine("Example: 'Oh, you brought me this? $h Thank you so much!'");
 
             return sb.ToString();
         }

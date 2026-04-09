@@ -28,7 +28,7 @@ namespace StardewAIMod.Menus
         private string _errorMessage = "";
 
         public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config)
-            : base(Game1.uiViewport.Width / 2 - 400, Game1.uiViewport.Height / 2 - 100, 800, 200, showUpperRightCloseButton: true)
+            : base(12, Game1.uiViewport.Height - 300, 800, 200, showUpperRightCloseButton: true)
         {
             _npc = npc;
             _veniceApi = veniceApi;
@@ -36,13 +36,13 @@ namespace StardewAIMod.Menus
             _config = config;
             _promptBuilder = new PromptBuilder();
 
-            // Configurar TextBox
+            // Configurar TextBox (estilo chat multijugador)
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
-                X = this.xPositionOnScreen + 50,
+                X = this.xPositionOnScreen + 20,
                 Y = this.yPositionOnScreen + 80,
-                Width = this.width - 200,
+                Width = this.width - 120,
                 Height = 50,
                 Selected = true
             };
@@ -50,7 +50,7 @@ namespace StardewAIMod.Menus
 
             // Botón enviar
             _sendButton = new ClickableTextureComponent(
-                new Rectangle(this.xPositionOnScreen + this.width - 130, this.yPositionOnScreen + 70, 64, 64),
+                new Rectangle(this.xPositionOnScreen + this.width - 80, this.yPositionOnScreen + 70, 64, 64),
                 Game1.mouseCursors,
                 new Rectangle(128, 256, 64, 64), // Icono de flecha
                 1f
@@ -102,9 +102,44 @@ namespace StardewAIMod.Menus
                 // Construir Contexto
                 var memory = _memoryService.GetMemory(_npc.Name);
 
-                // Actualizar datos en vivo del jugador
+                // Actualizar datos en vivo del jugador y relación
                 memory.PlayerName = Game1.player.Name;
                 memory.FriendshipHearts = Game1.player.getFriendshipHeartLevelForNPC(_npc.Name);
+
+                string relationship = "Stranger";
+                if (Game1.player.spouse == _npc.Name) {
+                    relationship = "Spouse";
+                } else if (Game1.player.friendshipData.ContainsKey(_npc.Name)) {
+                    var friendship = Game1.player.friendshipData[_npc.Name];
+                    if (friendship.IsDating()) {
+                        relationship = "Boyfriend/Girlfriend";
+                    } else if (memory.FriendshipHearts >= 8) {
+                        relationship = "Best Friend";
+                    } else if (memory.FriendshipHearts >= 4) {
+                        relationship = "Friend";
+                    } else if (memory.FriendshipHearts > 0) {
+                        relationship = "Acquaintance";
+                    }
+                }
+                memory.RelationshipStatus = relationship;
+
+                // Información del entorno y ropa
+                string playerClothing = $"Hat: {(Game1.player.hat.Value != null ? Game1.player.hat.Value.DisplayName : "None")}, " +
+                                        $"Shirt: {(Game1.player.shirtItem.Value != null ? Game1.player.shirtItem.Value.DisplayName : "Standard")}, " +
+                                        $"Pants: {(Game1.player.pantsItem.Value != null ? Game1.player.pantsItem.Value.DisplayName : "Standard")}";
+
+                List<string> nearbyNpcs = new List<string>();
+                foreach (var character in Game1.currentLocation.characters)
+                {
+                    if (character.Name != _npc.Name && Vector2.Distance(Game1.player.Tile, character.Tile) < 10)
+                    {
+                        nearbyNpcs.Add(character.Name);
+                    }
+                }
+                string environmentNotes = nearbyNpcs.Count > 0
+                    ? $"Nearby characters: {string.Join(", ", nearbyNpcs)}"
+                    : "You and the player are mostly alone here.";
+
 
                 var currentContext = new Dictionary<string, string>
                 {
@@ -112,7 +147,9 @@ namespace StardewAIMod.Menus
                     { "Day", Game1.dayOfMonth.ToString() },
                     { "Time", Game1.timeOfDay.ToString() },
                     { "Weather", Game1.isRaining ? "Raining" : (Game1.isSnowing ? "Snowing" : "Sunny") },
-                    { "Location", Game1.currentLocation.Name }
+                    { "Location", Game1.currentLocation.Name },
+                    { "Player Clothing", playerClothing },
+                    { "Environment", environmentNotes }
                 };
 
                 string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext);
