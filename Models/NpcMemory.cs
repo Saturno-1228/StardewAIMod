@@ -37,6 +37,9 @@ namespace StardewAIMod.Models
 
         /// <summary>Historial de la conversación reciente (a corto plazo).</summary>
         public List<ChatMessage> ConversationHistory { get; set; } = new List<ChatMessage>();
+
+        /// <summary>Lista de favores pendientes del NPC hacia el jugador.</summary>
+        public List<string> PendingFavors { get; set; } = new List<string>();
     }
 
     /// <summary>
