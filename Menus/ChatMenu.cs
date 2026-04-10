@@ -48,10 +48,12 @@ namespace StardewAIMod.Menus
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
-                X = this.xPositionOnScreen + 64 + 16, // Espacio para el icono de micrófono
-                Y = this.yPositionOnScreen + this.height + 16,
-                Width = this.width - 64 - 16 - 80 - 16, // Ancho disponible
+                X = this.xPositionOnScreen + 64, // Espacio para el icono de micrófono
+                Y = this.yPositionOnScreen + this.height,
+                Width = this.width - 64, // Ancho disponible abarcando el bloque de diálogo
                 Height = 50,
+                limitWidth = false,
+                textLimit = 200,
                 Selected = true // Seleccionado por defecto
             };
 
@@ -62,7 +64,7 @@ namespace StardewAIMod.Menus
 
             // Botón enviar
             _sendButton = new ClickableTextureComponent(
-                new Rectangle(_textBox.X + _textBox.Width + 16, this.yPositionOnScreen + this.height + 16 - 8, 64, 64),
+                new Rectangle(_textBox.X + _textBox.Width + 16, this.yPositionOnScreen + this.height - 8, 64, 64),
                 Game1.mouseCursors,
                 new Rectangle(128, 256, 64, 64), // Icono de flecha
                 1f
@@ -210,6 +212,12 @@ namespace StardewAIMod.Menus
                 // Limpiar mensaje de error previo si la respuesta fue exitosa
                 _errorMessage = "";
 
+                // Sincronización: Informar al juego base que el jugador ha hablado con el NPC
+                if (Game1.player.friendshipData.ContainsKey(_npc.Name))
+                {
+                    Game1.player.friendshipData[_npc.Name].TalkedToToday = true;
+                }
+
                 // Guardar respuesta de la IA en historial
                 _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
 
@@ -289,7 +297,7 @@ namespace StardewAIMod.Menus
 
                 // Dibujar un icono de micrófono (espacio reservado)
                 // Usamos un icono genérico de mouseCursors para representar el micrófono temporalmente
-                b.Draw(Game1.mouseCursors, new Vector2(this.xPositionOnScreen + 24, boxY + 24), new Rectangle(16, 368, 16, 16), Color.White, 0f, Vector2.Zero, 2.5f, SpriteEffects.None, 1f);
+                b.Draw(Game1.mouseCursors, new Vector2(this.xPositionOnScreen + 16, boxY + 16), new Rectangle(16, 368, 16, 16), Color.White, 0f, Vector2.Zero, 2.5f, SpriteEffects.None, 1f);
 
 
                 // TextBox y Botón
@@ -344,18 +352,21 @@ namespace StardewAIMod.Menus
             string[] words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             string currentBlock = "";
             string finalResult = "";
-            int charCount = 0;
 
             foreach (var word in words)
             {
-                if (charCount + word.Length > 120) // Límite seguro de 120 caracteres por página
+                // Si al añadir esta palabra (más el espacio) excedemos el límite de 120 y ya tenemos algo, cortamos la página
+                if (currentBlock.Length + word.Length + (currentBlock.Length > 0 ? 1 : 0) > 120 && currentBlock.Length > 0)
                 {
                     finalResult += currentBlock.TrimEnd() + "#$b#";
                     currentBlock = "";
-                    charCount = 0;
                 }
-                currentBlock += word + " ";
-                charCount += word.Length + 1;
+
+                if (currentBlock.Length > 0)
+                {
+                    currentBlock += " ";
+                }
+                currentBlock += word;
             }
             finalResult += currentBlock.TrimEnd();
 
