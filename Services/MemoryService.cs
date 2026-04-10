@@ -89,36 +89,44 @@ namespace StardewAIMod.Services
         }
 
         /// <summary>
-        /// Guarda todas las memorias en un archivo JSON.
+        /// Guarda todas las memorias en un archivo JSON usando la API segura de SMAPI.
         /// </summary>
         public void SaveAll()
         {
-            string path = Path.Combine(_helper.DirectoryPath, "memories.json");
-            string json = JsonSerializer.Serialize(_memories, new JsonSerializerOptions
+            try
             {
-                WriteIndented = true
-            });
-            File.WriteAllText(path, json);
-            _monitor.Log("[Memory] 💾 All memories saved.", StardewModdingAPI.LogLevel.Info);
+                _helper.Data.WriteJsonFile("memories.json", _memories);
+                _monitor.Log("[Memory] 💾 All memories saved.", StardewModdingAPI.LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"[Memory] ❌ Error saving memories: {ex}", StardewModdingAPI.LogLevel.Error);
+            }
         }
 
         /// <summary>
-        /// Carga las memorias desde el archivo JSON.
+        /// Carga las memorias desde el archivo JSON usando la API segura de SMAPI.
         /// </summary>
         public void LoadAll()
         {
-            string path = Path.Combine(_helper.DirectoryPath, "memories.json");
-            if (File.Exists(path))
+            try
             {
-                string json = File.ReadAllText(path);
-                _memories = JsonSerializer.Deserialize<Dictionary<string, NpcMemory>>(json)
+                _memories = _helper.Data.ReadJsonFile<Dictionary<string, NpcMemory>>("memories.json")
                             ?? new Dictionary<string, NpcMemory>();
-                _monitor.Log($"[Memory] 📂 Loaded memories for {_memories.Count} NPCs.", StardewModdingAPI.LogLevel.Info);
+
+                if (_memories.Count > 0)
+                {
+                    _monitor.Log($"[Memory] 📂 Loaded memories for {_memories.Count} NPCs.", StardewModdingAPI.LogLevel.Info);
+                }
+                else
+                {
+                    _monitor.Log("[Memory] 📂 No previous memories found. Starting fresh.", StardewModdingAPI.LogLevel.Info);
+                }
             }
-            else
+            catch (Exception ex)
             {
+                _monitor.Log($"[Memory] ❌ Error loading memories, starting fresh. {ex}", StardewModdingAPI.LogLevel.Error);
                 _memories = new Dictionary<string, NpcMemory>();
-                _monitor.Log("[Memory] 📂 No previous memories found. Starting fresh.", StardewModdingAPI.LogLevel.Info);
             }
         }
 

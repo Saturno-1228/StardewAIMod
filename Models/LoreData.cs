@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace StardewAIMod.Models
 {
@@ -11,5 +12,8 @@ namespace StardewAIMod.Models
     {
         public List<string> Keywords { get; set; } = new List<string>();
         public string Info { get; set; } = "";
+
+        // Cache compiled regexes for faster matching
+        public List<Regex> CompiledRegexes { get; set; } = new List<Regex>();
     }
 }

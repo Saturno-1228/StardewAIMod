@@ -32,10 +32,9 @@ namespace StardewAIMod.Services
             var generalLore = LoadLore("General.json");
             foreach (var topic in generalLore.Topics)
             {
-                foreach (var keyword in topic.Keywords)
+                foreach (var regex in topic.CompiledRegexes)
                 {
-                    string pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(keyword) + @"\b";
-                    if (System.Text.RegularExpressions.Regex.IsMatch(playerMessage, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    if (regex.IsMatch(playerMessage))
                     {
                         relevantLore.Add($"- {topic.Info}");
                         break; // Prevent adding the same topic multiple times if multiple keywords match
@@ -47,10 +46,9 @@ namespace StardewAIMod.Services
             var npcLore = LoadLore($"{npcName}.json");
             foreach (var topic in npcLore.Topics)
             {
-                foreach (var keyword in topic.Keywords)
+                foreach (var regex in topic.CompiledRegexes)
                 {
-                    string pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(keyword) + @"\b";
-                    if (System.Text.RegularExpressions.Regex.IsMatch(playerMessage, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    if (regex.IsMatch(playerMessage))
                     {
                         relevantLore.Add($"- {topic.Info}");
                         break;
@@ -90,6 +88,17 @@ namespace StardewAIMod.Services
                     var loreData = JsonSerializer.Deserialize<LoreData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (loreData != null)
                     {
+                        // Precompile regexes for this lore data
+                        foreach (var topic in loreData.Topics)
+                        {
+                            topic.CompiledRegexes = new List<System.Text.RegularExpressions.Regex>();
+                            foreach (var keyword in topic.Keywords)
+                            {
+                                string pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(keyword) + @"\b";
+                                topic.CompiledRegexes.Add(new System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled));
+                            }
+                        }
+
                         _loreCache[loreFileName] = loreData;
                         return loreData;
                     }
@@ -151,17 +160,27 @@ namespace StardewAIMod.Services
             {
                 sb.AppendLine("[MEMORIES - Things you remember about this player]");
 
-                // Enviar solo un subconjunto reciente o limitado para no exceder los tokens.
-                // Ordenamos por fecha o asumimos que ya vienen en orden.
-                // Tomamos un máximo de las últimas 10 memorias (por ejemplo) para evitar desbordar el contexto
-                int maxMemoriesToInclude = 10;
                 var memorias = memory.Memories;
-                int startIdx = System.Math.Max(0, memorias.Count - maxMemoriesToInclude);
+                int charCount = 0;
+                int maxCharsForMemories = 4000; // Aproximadamente 1000 tokens como límite estricto
 
-                for (int i = startIdx; i < memorias.Count; i++)
+                // Empezamos desde la más reciente hacia atrás para priorizar lo último que pasó
+                var memoriesToInclude = new List<string>();
+                for (int i = memorias.Count - 1; i >= 0; i--)
                 {
                     var mem = memorias[i];
-                    sb.AppendLine($"- ({mem.GameDate}) {mem.Description} [felt: {mem.Emotion}]");
+                    string memoryLine = $"- ({mem.GameDate}) {mem.Description} [felt: {mem.Emotion}]";
+
+                    if (charCount + memoryLine.Length > maxCharsForMemories)
+                        break;
+
+                    memoriesToInclude.Insert(0, memoryLine); // Insert at beginning to maintain chronological order
+                    charCount += memoryLine.Length;
+                }
+
+                foreach (var line in memoriesToInclude)
+                {
+                    sb.AppendLine(line);
                 }
                 sb.AppendLine();
             }

@@ -107,16 +107,20 @@ namespace StardewAIMod
             this.VeniceApi = new Services.VeniceApiService(
                 this.Secrets.VeniceApiKey,
                 this.Config.VeniceModel,
-                this.Config.VeniceEndpoint,
-                this.Config.VeniceTranscriptionEndpoint
+                this.Config.VeniceEndpoint
             );
 
             // Inicializar MemoryService
             this.Memory = new Services.MemoryService(this.Helper, this.Monitor, this.Config.MaxMemoryPerNpc);
 
+            // Initialize LocalTranscriptionService
+            string modelPath = System.IO.Path.Combine(this.Helper.DirectoryPath, "assets", "ggml-base.bin");
+            var localTranscriptionService = new Services.LocalTranscriptionService(modelPath, this.Monitor);
+
             // Inicializar VoiceInteractionManager
             this.VoiceManager = new Services.VoiceInteractionManager(
                 this.VeniceApi,
+                localTranscriptionService,
                 this.Memory,
                 this.Config,
                 this.Monitor,

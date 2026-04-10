@@ -19,6 +19,8 @@ namespace StardewAIMod
         [HarmonyPatch(typeof(StardewValley.Menus.DialogueBox), MethodType.Constructor, new Type[] { typeof(Dialogue) })]
         public static class DialogueBoxConstructorPatch
         {
+            private static readonly System.Text.RegularExpressions.Regex _dialogueCleanupRegex = new System.Text.RegularExpressions.Regex(@"#\$[a-z]\$#", System.Text.RegularExpressions.RegexOptions.Compiled);
+
             public static void Postfix(StardewValley.Menus.DialogueBox __instance, Dialogue dialogue)
             {
                 if (Memory == null || dialogue == null || dialogue.speaker == null) return;
@@ -29,7 +31,7 @@ namespace StardewAIMod
                     if (!string.IsNullOrEmpty(nativeText))
                     {
                         // Remove dialogue commands for a cleaner text for AI
-                        string cleanText = System.Text.RegularExpressions.Regex.Replace(nativeText, @"#\$[a-z]\$#", "").Replace("#$b#", " ").Replace("#$e#", "");
+                        string cleanText = _dialogueCleanupRegex.Replace(nativeText, "").Replace("#$b#", " ").Replace("#$e#", "");
                         Memory.AddToConversationHistory(dialogue.speaker.Name, "assistant", cleanText.Trim());
                         Monitor.Log($"[Studio Corvus] 🗣️ Native dialogue captured for {dialogue.speaker.Name}.", LogLevel.Trace);
                     }

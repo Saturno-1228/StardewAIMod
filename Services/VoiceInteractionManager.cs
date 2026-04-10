@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
+using System;
+using System.Collections.Concurrent;
 using StardewAIMod.Models;
 
 namespace StardewAIMod.Services
@@ -12,6 +14,7 @@ namespace StardewAIMod.Services
     public class VoiceInteractionManager
     {
         private readonly VeniceApiService _veniceApi;
+        private readonly LocalTranscriptionService _localTranscriptionService;
         private readonly MemoryService _memoryService;
         private readonly AudioRecorder _audioRecorder;
         private readonly ModConfig _config;
@@ -20,15 +23,18 @@ namespace StardewAIMod.Services
 
         private NPC _targetNpc;
         private bool _isRecordingPhase = false;
+        private readonly ConcurrentQueue<Action> _uiThreadActions = new();
 
         public VoiceInteractionManager(
             VeniceApiService veniceApi,
+            LocalTranscriptionService localTranscriptionService,
             MemoryService memoryService,
             ModConfig config,
             IMonitor monitor,
             string modDirectory)
         {
             _veniceApi = veniceApi;
+            _localTranscriptionService = localTranscriptionService;
             _memoryService = memoryService;
             _config = config;
             _monitor = monitor;
@@ -55,13 +61,18 @@ namespace StardewAIMod.Services
 
         public void Update()
         {
+            while (_uiThreadActions.TryDequeue(out var action))
+            {
+                action();
+            }
+
             if (_isRecordingPhase)
             {
                 _audioRecorder.Update();
             }
         }
 
-        public async void StopRecordingAndProcess()
+        public void StopRecordingAndProcess()
         {
             if (!_isRecordingPhase || _targetNpc == null) return;
 
@@ -69,34 +80,9 @@ namespace StardewAIMod.Services
             _monitor.Log("[Studio Corvus] 🎙️ Grabación detenida. Procesando audio...", LogLevel.Info);
 
             byte[] audioData = _audioRecorder.StopRecording();
+            NPC currentNpc = _targetNpc; // Capture for the background task
 
-            // 44 bytes is just the WAV header. We need actual audio data.
-            // 1 second of 16-bit mono audio at 48000Hz (typical XNA mic) is 96000 bytes.
-            // Let's require at least 0.5 seconds of audio (~48000 bytes) to avoid useless requests.
-            if (audioData == null || audioData.Length < 48000)
-            {
-                _monitor.Log("[Studio Corvus] ⚠️ Audio demasiado corto o inválido.", LogLevel.Warn);
-                Game1.addHUDMessage(new HUDMessage("No se detectó voz.", HUDMessage.error_type));
-                return;
-            }
-
-            // Transcribe audio
-            string userText = await _veniceApi.TranscribeAudioAsync(audioData);
-
-            if (string.IsNullOrWhiteSpace(userText) || userText.StartsWith("["))
-            {
-                _monitor.Log($"[Studio Corvus] ❌ Error de transcripción o texto vacío: {userText}", LogLevel.Error);
-                Game1.addHUDMessage(new HUDMessage("No pude entenderte.", HUDMessage.error_type));
-                return;
-            }
-
-            _monitor.Log($"[Studio Corvus] 🗣️ Jugador dijo: {userText}", LogLevel.Info);
-
-            // Fetch Memory & Build Prompt
-            var memory = _memoryService.GetMemory(_targetNpc.Name);
-            var recentHistory = memory.ConversationHistory;
-            _memoryService.AddToConversationHistory(_targetNpc.Name, "player", userText);
-
+            // Extract context safely on the main thread
             var currentContext = new Dictionary<string, string>
             {
                 { "Season", Game1.season.ToString() },
@@ -113,55 +99,105 @@ namespace StardewAIMod.Services
                 currentContext["Holding Item"] = Game1.player.ActiveObject.DisplayName;
             }
 
-            if (_targetNpc.isBirthday())
+            bool isBirthday = currentNpc.isBirthday();
+            if (isBirthday)
             {
                 currentContext["Event"] = "Today is your birthday!";
             }
 
-            var promptBuilder = new PromptBuilder(_modDirectory);
-            string systemPrompt = promptBuilder.BuildSystemPrompt(_targetNpc.Name, memory, currentContext, userText);
-
-            // Get AI Response
-            _monitor.Log($"[Studio Corvus] 🧠 Consultando a Venice AI...", LogLevel.Info);
-            string aiResponse = await _veniceApi.SendMessageAsync(systemPrompt, recentHistory);
-
-            _monitor.Log($"[Studio Corvus] 🤖 {_targetNpc.Name} responde: {aiResponse}", LogLevel.Info);
-
-            // Check for friendship commands
-            if (aiResponse.Contains("$h") || aiResponse.Contains("$l"))
+            // Run everything else on a background thread so we don't freeze the game
+            Task.Run(async () =>
             {
-                Game1.player.changeFriendship(10, _targetNpc);
-            }
-            else if (aiResponse.Contains("$s") || aiResponse.Contains("$a"))
-            {
-                Game1.player.changeFriendship(-10, _targetNpc);
-            }
+                try
+                {
+                    // 44 bytes is just the WAV header. We need actual audio data.
+                    // 1 second of 16-bit mono audio at 48000Hz (typical XNA mic) is 96000 bytes.
+                    // Let's require at least 0.5 seconds of audio (~48000 bytes) to avoid useless requests.
+                    if (audioData == null || audioData.Length < 48000)
+                    {
+                        _monitor.Log("[Studio Corvus] ⚠️ Audio demasiado corto o inválido.", LogLevel.Warn);
+                        _uiThreadActions.Enqueue(() =>
+                        {
+                            Game1.addHUDMessage(new HUDMessage("No se detectó voz.", HUDMessage.error_type));
+                        });
+                        return;
+                    }
 
-            _memoryService.AddToConversationHistory(_targetNpc.Name, "assistant", aiResponse);
+                    // Transcribe audio using LocalTranscriptionService
+                    string userText = await _localTranscriptionService.TranscribeAsync(audioData);
 
-            // Clean response for native dialogue box
-            string cleanResponse = aiResponse.Replace("$h", "").Replace("$s", "").Replace("$u", "")
-                                             .Replace("$l", "").Replace("$a", "").Trim();
+                    if (string.IsNullOrWhiteSpace(userText) || userText.StartsWith("["))
+                    {
+                        _monitor.Log($"[Studio Corvus] ❌ Error de transcripción o texto vacío: {userText}", LogLevel.Error);
+                        _uiThreadActions.Enqueue(() =>
+                        {
+                            Game1.addHUDMessage(new HUDMessage("No pude entenderte.", HUDMessage.error_type));
+                        });
+                        return;
+                    }
 
-            // Intercept errors
-            if (cleanResponse.StartsWith("[") && (cleanResponse.Contains("Error") || cleanResponse.Contains("No response")))
-            {
-                cleanResponse = "Uh... me siento un poco mareado. ¿Hablamos luego?";
-            }
+                    _monitor.Log($"[Studio Corvus] 🗣️ Jugador dijo: {userText}", LogLevel.Info);
 
-            // Format dialogue with pagination to avoid overflow
-            cleanResponse = FormatDialogueText(cleanResponse);
+                    // Fetch Memory & Build Prompt
+                    var memory = _memoryService.GetMemory(currentNpc.Name);
+                    var recentHistory = memory.ConversationHistory;
+                    _memoryService.AddToConversationHistory(currentNpc.Name, "player", userText);
 
-            // Show in native DialogueBox
-            _targetNpc.CurrentDialogue.Clear();
-            _targetNpc.CurrentDialogue.Push(new Dialogue(_targetNpc, null, cleanResponse));
-            Game1.drawDialogue(_targetNpc);
+                    var promptBuilder = new PromptBuilder(_modDirectory);
+                    string systemPrompt = promptBuilder.BuildSystemPrompt(currentNpc.Name, memory, currentContext, userText);
 
-            // Prevent first-time greeting
-            if (Game1.player.friendshipData.ContainsKey(_targetNpc.Name))
-            {
-                Game1.player.friendshipData[_targetNpc.Name].TalkedToToday = true;
-            }
+                    // Get AI Response
+                    _monitor.Log($"[Studio Corvus] 🧠 Consultando a Venice AI...", LogLevel.Info);
+                    string aiResponse = await _veniceApi.SendMessageAsync(systemPrompt, recentHistory);
+
+                    _monitor.Log($"[Studio Corvus] 🤖 {currentNpc.Name} responde: {aiResponse}", LogLevel.Info);
+
+                    _memoryService.AddToConversationHistory(currentNpc.Name, "assistant", aiResponse);
+
+                    // Clean response for native dialogue box
+                    string cleanResponse = aiResponse.Replace("$h", "").Replace("$s", "").Replace("$u", "")
+                                                     .Replace("$l", "").Replace("$a", "").Trim();
+
+                    // Intercept errors
+                    if (cleanResponse.StartsWith("[") && (cleanResponse.Contains("Error") || cleanResponse.Contains("No response")))
+                    {
+                        cleanResponse = "Uh... me siento un poco mareado. ¿Hablamos luego?";
+                    }
+
+                    // Format dialogue with pagination to avoid overflow
+                    cleanResponse = FormatDialogueText(cleanResponse);
+
+                    // Enqueue UI updates
+                    _uiThreadActions.Enqueue(() =>
+                    {
+                        // Check for friendship commands
+                        if (aiResponse.Contains("$h") || aiResponse.Contains("$l"))
+                        {
+                            Game1.player.changeFriendship(10, currentNpc);
+                        }
+                        else if (aiResponse.Contains("$s") || aiResponse.Contains("$a"))
+                        {
+                            Game1.player.changeFriendship(-10, currentNpc);
+                        }
+
+                        // Show in native DialogueBox
+                        currentNpc.CurrentDialogue.Clear();
+                        currentNpc.CurrentDialogue.Push(new Dialogue(currentNpc, null, cleanResponse));
+                        Game1.drawDialogue(currentNpc);
+
+                        // Prevent first-time greeting
+                        if (Game1.player.friendshipData.ContainsKey(currentNpc.Name))
+                        {
+                            Game1.player.friendshipData[currentNpc.Name].TalkedToToday = true;
+                        }
+                    });
+
+                }
+                catch (Exception ex)
+                {
+                    _monitor.Log($"[Studio Corvus] ❌ Excepción no manejada en procesamiento de voz: {ex}", LogLevel.Error);
+                }
+            });
         }
 
         private string FormatDialogueText(string text)
