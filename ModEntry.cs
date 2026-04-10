@@ -21,6 +21,7 @@ namespace StardewAIMod
         // Servicios
         private Services.VeniceApiService VeniceApi;
         private Services.MemoryService Memory;
+        private Services.VoiceInteractionManager VoiceManager;
 
         // Catálogo de Items
         public static System.Collections.Generic.Dictionary<string, string> ItemCatalog = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
@@ -57,6 +58,8 @@ namespace StardewAIMod
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.Input.ButtonReleased += this.OnButtonReleased;
+            helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
             helper.Events.GameLoop.Saving += this.OnSaving;
         }
 
@@ -104,11 +107,21 @@ namespace StardewAIMod
             this.VeniceApi = new Services.VeniceApiService(
                 this.Secrets.VeniceApiKey,
                 this.Config.VeniceModel,
-                this.Config.VeniceEndpoint
+                this.Config.VeniceEndpoint,
+                this.Config.VeniceTranscriptionEndpoint
             );
 
             // Inicializar MemoryService
             this.Memory = new Services.MemoryService(this.Helper, this.Monitor, this.Config.MaxMemoryPerNpc);
+
+            // Inicializar VoiceInteractionManager
+            this.VoiceManager = new Services.VoiceInteractionManager(
+                this.VeniceApi,
+                this.Memory,
+                this.Config,
+                this.Monitor,
+                this.Helper.DirectoryPath
+            );
 
             // Inicializar y Aplicar Harmony Patches
             var harmony = new HarmonyLib.Harmony(this.ModManifest.UniqueID);
@@ -224,6 +237,17 @@ namespace StardewAIMod
         }
 
         /// <summary>
+        /// Se ejecuta en cada tick del juego.
+        /// </summary>
+        private void OnUpdateTicked(object sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
+        {
+            if (this.VoiceManager != null)
+            {
+                this.VoiceManager.Update();
+            }
+        }
+
+        /// <summary>
         /// Se ejecuta cuando el jugador presiona cualquier tecla.
         /// </summary>
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
@@ -231,48 +255,60 @@ namespace StardewAIMod
             if (!Context.IsWorldReady || Game1.activeClickableMenu != null)
                 return;
 
-            // Detectar tecla de chat (configurable)
-            if (e.Button.ToString() == this.Config.ChatKey)
+            // Detectar tecla de voz (mantener presionada)
+            if (e.Button.ToString() == this.Config.VoiceKey)
             {
-                // Prevenir abrir el chat si no hay API Key configurada
                 if (string.IsNullOrEmpty(this.Secrets.VeniceApiKey))
                 {
                     Game1.addHUDMessage(new HUDMessage("Stardew AI: Missing Venice API Key in secrets.json!", HUDMessage.error_type));
                     return;
                 }
 
-                // Detectar si el jugador está frente a un NPC
-                NPC targetNpc = null;
-
-                // Intentar encontrar al NPC frente al jugador
-                var grabTile = new Microsoft.Xna.Framework.Vector2(
-                    (int)(Game1.player.GetGrabTile().X),
-                    (int)(Game1.player.GetGrabTile().Y)
-                );
-                foreach (var npc in Game1.currentLocation.characters)
-                {
-                    if (npc.Tile == grabTile)
-                    {
-                        targetNpc = npc;
-                        break;
-                    }
-                }
-
+                NPC targetNpc = FindClosestNpc(this.Config.MaxInteractionDistance);
 
                 if (targetNpc != null)
                 {
-                    this.Monitor.Log($"[Studio Corvus] 💬 Initiating chat with {targetNpc.Name}", LogLevel.Info);
-
-                    // Abrir interfaz de chat interactiva
-                    Game1.activeClickableMenu = new Menus.ChatMenu(
-                        targetNpc,
-                        this.VeniceApi,
-                        this.Memory,
-                        this.Config,
-                        this.Helper.DirectoryPath
-                    );
+                    this.VoiceManager.StartRecording(targetNpc);
                 }
             }
+        }
+
+        /// <summary>
+        /// Se ejecuta cuando el jugador suelta una tecla.
+        /// </summary>
+        private void OnButtonReleased(object sender, ButtonReleasedEventArgs e)
+        {
+            if (!Context.IsWorldReady)
+                return;
+
+            if (e.Button.ToString() == this.Config.VoiceKey)
+            {
+                this.VoiceManager.StopRecordingAndProcess();
+            }
+        }
+
+        /// <summary>
+        /// Busca al NPC más cercano al jugador dentro de un radio.
+        /// </summary>
+        private NPC FindClosestNpc(float maxDistance)
+        {
+            NPC closest = null;
+            float minDistance = float.MaxValue;
+            var playerPos = Game1.player.getTileLocation();
+
+            foreach (var npc in Game1.currentLocation.characters)
+            {
+                if (!npc.IsVillager || !npc.CanSocialize) continue;
+
+                float dist = Microsoft.Xna.Framework.Vector2.Distance(playerPos, npc.getTileLocation());
+                if (dist <= maxDistance && dist < minDistance)
+                {
+                    minDistance = dist;
+                    closest = npc;
+                }
+            }
+
+            return closest;
         }
     }
 }

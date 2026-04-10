@@ -17,15 +17,8 @@ namespace StardewAIMod
         /// <summary>Endpoint base de Venice API.</summary>
         public string VeniceEndpoint { get; set; } = "https://api.venice.ai/api/v1/chat/completions";
 
-        // ═══════════════════════════════════════
-        //  FUNCIONALIDADES
-        // ═══════════════════════════════════════
-
-        /// <summary>Habilitar chat por texto.</summary>
-        public bool EnableTextChat { get; set; } = true;
-
-        /// <summary>Habilitar entrada/salida de voz (futuro).</summary>
-        public bool EnableVoice { get; set; } = false;
+        /// <summary>Endpoint para transcripciones de Venice API.</summary>
+        public string VeniceTranscriptionEndpoint { get; set; } = "https://api.venice.ai/api/v1/audio/transcriptions";
 
         // ═══════════════════════════════════════
         //  MEMORIA DE NPCs
@@ -38,10 +31,13 @@ namespace StardewAIMod
         public bool PersistMemory { get; set; } = true;
 
         // ═══════════════════════════════════════
-        //  CONTROLES
+        //  CONTROLES DE VOZ
         // ═══════════════════════════════════════
 
-        /// <summary>Tecla para abrir chat con NPC cercano.</summary>
-        public string ChatKey { get; set; } = "N";
+        /// <summary>Tecla para grabar voz (mantener presionada).</summary>
+        public string VoiceKey { get; set; } = "Tab";
+
+        /// <summary>Distancia máxima (en tiles) para que un NPC te escuche.</summary>
+        public float MaxInteractionDistance { get; set; } = 4.0f;
     }
 }

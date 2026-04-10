@@ -23,14 +23,56 @@ namespace StardewAIMod.Services
         private DateTime _lastRequestTime = DateTime.MinValue;
         private readonly TimeSpan _minTimeBetweenRequests = TimeSpan.FromSeconds(3); // 3 seconds cooldown
 
-        public VeniceApiService(string apiKey, string model, string endpoint)
+        private readonly string _transcriptionEndpoint;
+
+        public VeniceApiService(string apiKey, string model, string endpoint, string transcriptionEndpoint)
         {
             _apiKey = apiKey;
             _model = model;
             _endpoint = endpoint;
+            _transcriptionEndpoint = transcriptionEndpoint;
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+        }
+
+        /// <summary>
+        /// Envía un archivo de audio WAV a Venice AI para obtener su transcripción.
+        /// </summary>
+        /// <param name="wavData">Datos en bytes del archivo WAV.</param>
+        /// <returns>Texto transcrito de la voz del jugador.</returns>
+        public async Task<string> TranscribeAudioAsync(byte[] wavData)
+        {
+            if (wavData == null || wavData.Length == 0) return string.Empty;
+
+            try
+            {
+                using var form = new MultipartFormDataContent();
+
+                var fileContent = new ByteArrayContent(wavData);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+                form.Add(fileContent, "file", "voice.wav");
+
+                var response = await _httpClient.PostAsync(_transcriptionEndpoint, form);
+                string responseJson = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return $"[Venice Transcription Error: {response.StatusCode}]";
+                }
+
+                using var doc = JsonDocument.Parse(responseJson);
+                if (doc.RootElement.TryGetProperty("text", out var textElement))
+                {
+                    return textElement.GetString();
+                }
+
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                return $"[Transcription Error: {ex.Message}]";
+            }
         }
 
         /// <summary>
