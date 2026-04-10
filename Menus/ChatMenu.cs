@@ -41,33 +41,35 @@ namespace StardewAIMod.Menus
             _modDirectory = modDirectory;
             _promptBuilder = new PromptBuilder(modDirectory);
 
-            // Subir el cuadro de diálogo para hacer espacio para el chat en la parte inferior
-            this.yPositionOnScreen -= 100;
+            // Subimos el diálogo principal para hacer espacio en la parte inferior
+            this.yPositionOnScreen -= 120;
 
-            // Configurar TextBox (estilo chat multijugador)
+            int boxY = this.yPositionOnScreen + this.height; // Justo debajo del diálogo de Haley/NPC
+            int padding = 24; // Espaciado limpio y simétrico
+
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
+
+            // Campo de texto minimalista
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
-                X = this.xPositionOnScreen + 64, // Espacio para el icono de micrófono
-                Y = this.yPositionOnScreen + this.height,
-                Width = this.width - 64, // Ancho disponible abarcando el bloque de diálogo
+                X = this.xPositionOnScreen + padding,
+                Y = boxY + padding,
+                Width = this.width - (padding * 3) - 64, // Calculado para dejar espacio exacto al micrófono
                 Height = 50,
                 limitWidth = false,
                 textLimit = 200,
-                Selected = true // Seleccionado por defecto
+                Selected = true
             };
-
-            // Texto por defecto como pista
             _textBox.Text = "";
             _isTextBoxVisible = true;
             Game1.keyboardDispatcher.Subscriber = _textBox;
 
-            // Botón enviar
+            // Botón de micrófono alineado a la derecha
             _sendButton = new ClickableTextureComponent(
-                new Rectangle(_textBox.X + _textBox.Width + 16, this.yPositionOnScreen + this.height - 8, 64, 64),
+                new Rectangle(_textBox.X + _textBox.Width + padding, _textBox.Y - 4, 64, 64),
                 Game1.mouseCursors,
-                new Rectangle(128, 256, 64, 64), // Icono de flecha
-                1f
+                new Rectangle(16, 368, 16, 16), // Textura de globo/micrófono de Stardew
+                4f // Escala para que mida exactamente 64x64
             );
         }
 
@@ -287,48 +289,42 @@ namespace StardewAIMod.Menus
         {
             base.draw(b);
 
-            // If the text box is visible, draw it and its elements
             if (_isTextBoxVisible)
             {
-                // Dibujar un recuadro con textura de madera debajo del diálogo principal
                 int boxY = this.yPositionOnScreen + this.height;
-                int boxHeight = 90;
-                IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60), this.xPositionOnScreen, boxY, this.width, boxHeight, Color.White, 1f, true);
+                int boxHeight = 100; // Altura fija y proporcionada
 
-                // Dibujar un icono de micrófono (espacio reservado)
-                // Usamos un icono genérico de mouseCursors para representar el micrófono temporalmente
-                b.Draw(Game1.mouseCursors, new Vector2(this.xPositionOnScreen + 16, boxY + 16), new Rectangle(16, 368, 16, 16), Color.White, 0f, Vector2.Zero, 2.5f, SpriteEffects.None, 1f);
+                // Fondo del chat interactivo
+                IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                    this.xPositionOnScreen, boxY, this.width, boxHeight, Color.White, 1f, true);
 
-
-                // TextBox y Botón
                 _textBox.Draw(b);
 
-                // Texto por defecto si el textbox está vacío
+                // Texto de ayuda cuando está vacío
                 if (string.IsNullOrEmpty(_textBox.Text))
                 {
-                    Utility.drawTextWithShadow(b, "[Escribe tu mensaje...]", Game1.smallFont, new Vector2(_textBox.X + 8, _textBox.Y + 12), Color.Gray);
+                    Utility.drawTextWithShadow(b, "Escribe o usa el micrófono...", Game1.smallFont,
+                        new Vector2(_textBox.X + 16, _textBox.Y + 12), Color.Gray);
                 }
 
                 if (!_isWaitingForResponse)
                 {
-                    _sendButton.draw(b);
-
-                    // Texto del botón Enviar superpuesto (opcional, como en el mockup)
-                    // Utility.drawTextWithShadow(b, "Enviar", Game1.smallFont, new Vector2(_sendButton.bounds.X, _sendButton.bounds.Y + 20), Game1.textColor);
+                    _sendButton.draw(b); // Dibuja el micrófono
                 }
-
-                // Estado de carga o error
-                if (_isWaitingForResponse)
+                else
                 {
-                    Utility.drawTextWithShadow(b, "Thinking...", Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, boxY + boxHeight), Color.Gray);
+                    // Indicador de estado minimalista
+                    Utility.drawTextWithShadow(b, "Pensando...", Game1.smallFont,
+                        new Vector2(_textBox.X + 16, boxY + boxHeight - 20), Color.Gray);
                 }
+
                 if (!string.IsNullOrEmpty(_errorMessage))
                 {
-                    Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont, new Vector2(this.xPositionOnScreen + 50, boxY + boxHeight), Color.Red);
+                    Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont,
+                        new Vector2(_textBox.X + 16, boxY + boxHeight - 20), Color.Red);
                 }
             }
 
-            // Puntero del mouse
             drawMouse(b);
         }
 
