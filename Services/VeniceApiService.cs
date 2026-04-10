@@ -30,7 +30,9 @@ namespace StardewAIMod.Services
             _apiKey = apiKey;
             _model = model;
             _endpoint = endpoint;
-            _transcriptionEndpoint = transcriptionEndpoint;
+            _transcriptionEndpoint = string.IsNullOrEmpty(transcriptionEndpoint)
+                ? "https://api.venice.ai/api/v1/audio/transcriptions"
+                : transcriptionEndpoint;
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
@@ -53,12 +55,34 @@ namespace StardewAIMod.Services
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
                 form.Add(fileContent, "file", "voice.wav");
 
+                // Explicitly define the model for transcription as required by Venice AI Docs
+                var modelContent = new StringContent("openai/whisper-large-v3");
+                form.Add(modelContent, "model");
+
                 var response = await _httpClient.PostAsync(_transcriptionEndpoint, form);
                 string responseJson = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return $"[Venice Transcription Error: {response.StatusCode}]";
+                    string errorDetail = "";
+                    try
+                    {
+                        using var errorDoc = JsonDocument.Parse(responseJson);
+                        if (errorDoc.RootElement.TryGetProperty("error", out var errorElement))
+                        {
+                            errorDetail = " - " + errorElement.GetString();
+                        }
+                        else
+                        {
+                            errorDetail = " - " + responseJson;
+                        }
+                    }
+                    catch
+                    {
+                        errorDetail = string.IsNullOrWhiteSpace(responseJson) ? "" : " - " + responseJson;
+                    }
+
+                    return $"[Venice Transcription Error: {response.StatusCode}{errorDetail}]";
                 }
 
                 using var doc = JsonDocument.Parse(responseJson);
