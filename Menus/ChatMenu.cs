@@ -11,10 +11,6 @@ using StardewAIMod.Models;
 
 namespace StardewAIMod.Menus
 {
-    /// <summary>
-    /// Interfaz interactiva y personalizada para escribirle al NPC.
-    /// Reescrita desde cero heredando de IClickableMenu.
-    /// </summary>
     public class ChatMenu : IClickableMenu
     {
         private readonly NPC _npc;
@@ -30,12 +26,17 @@ namespace StardewAIMod.Menus
         private string _errorMessage = "";
         private readonly string _modDirectory;
 
-        // Timer for basic animations (ellipsis for "Thinking...")
         private int _animationTimer = 0;
         private string _thinkingEllipsis = "";
 
+        // Constructor modificado para pasar dimensiones al IClickableMenu (Soluciona posición 0,0)
         public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config, string modDirectory)
-            : base()
+            : base(
+                  (Game1.uiViewport.Width / 2) - (800 / 2),
+                  Game1.uiViewport.Height - 300 - 64,
+                  800,
+                  300
+              )
         {
             _npc = npc;
             _veniceApi = veniceApi;
@@ -44,48 +45,45 @@ namespace StardewAIMod.Menus
             _modDirectory = modDirectory;
             _promptBuilder = new PromptBuilder(modDirectory);
 
-            // Calcular el tamaño y posición del menú en pantalla (centrado en la parte inferior)
-            this.width = 800;
-            this.height = 300;
-
-            // Centrado horizontalmente, abajo dejando algo de margen
-            this.xPositionOnScreen = (Game1.uiViewport.Width / 2) - (this.width / 2);
-            this.yPositionOnScreen = Game1.uiViewport.Height - this.height - 64;
-
             int padding = 32;
-
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
-
-            // Configurar el campo de texto
-            // Dejar espacio para el portrait a la izquierda y el botón a la derecha
-            int portraitWidth = 128; // Espacio aproximado para el portrait y el margen
+            int portraitWidth = 128;
 
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
                 X = this.xPositionOnScreen + padding + portraitWidth + 16,
-                Y = this.yPositionOnScreen + this.height - padding - 64, // Abajo dentro de la caja
-                Width = this.width - portraitWidth - (padding * 3) - 64 - 16, // Espacio restante menos el botón de envío
-                Height = 64, // Altura estándar para la textura de textBox
+                Y = this.yPositionOnScreen + this.height - padding - 64,
+                Width = this.width - portraitWidth - (padding * 3) - 64 - 16,
+                Height = 64,
                 limitWidth = false,
-                textLimit = 200, // Limite razonable para un prompt (puede ser mayor si se desea)
+                textLimit = 200,
                 Selected = true
             };
 
             _textBox.Text = "";
             Game1.keyboardDispatcher.Subscriber = _textBox;
 
-            // Configurar el botón de micrófono/envío alineado a la derecha de la caja de texto
             _sendButton = new ClickableTextureComponent(
                 new Rectangle(_textBox.X + _textBox.Width + 16, _textBox.Y, 64, 64),
                 Game1.mouseCursors,
-                new Rectangle(16, 368, 16, 16), // Globo / mic
-                4f // Escala
+                new Rectangle(16, 368, 16, 16),
+                4f
             );
+        }
+
+        // Blindaje contra cierres accidentales al dar clic (Soluciona el problema de que desaparece)
+        public override bool readyToClose()
+        {
+            return false;
+        }
+
+        public override void receiveRightClick(int x, int y, bool playSound = true)
+        {
+            // Absorber clic derecho para que no haga interactúe con el mapa de fondo
         }
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
-            // Solo procesar clics si no estamos esperando la API
             if (_isWaitingForResponse)
                 return;
 
@@ -98,8 +96,6 @@ namespace StardewAIMod.Menus
             }
             else if (isWithinBounds(x, y))
             {
-                // Si hizo clic dentro del menú general, asegurarse de que el campo de texto mantenga foco
-                // o se seleccione si se hace clic específicamente sobre él.
                 Rectangle textBoxBounds = new Rectangle(_textBox.X, _textBox.Y, _textBox.Width, _textBox.Height);
                 if (textBoxBounds.Contains(x, y))
                 {
@@ -109,9 +105,7 @@ namespace StardewAIMod.Menus
             }
             else
             {
-                // Si hace clic fuera de la ventana completamente, perdemos el foco (o cerramos el menú, opcional).
                 _textBox.Selected = false;
-                // exitThisMenu(false); // Descomenta si prefieres que se cierre al hacer clic fuera.
             }
         }
 
@@ -129,7 +123,6 @@ namespace StardewAIMod.Menus
                 return;
             }
 
-            // Evitar que las teclas afecten al juego base si el textbox está seleccionado
             if (!_textBox.Selected)
             {
                 base.receiveKeyPress(key);
@@ -259,10 +252,8 @@ namespace StardewAIMod.Menus
 
                 _npc.CurrentDialogue.Push(new Dialogue(_npc, null, formattedReply));
 
-                // Mostrar el diálogo nativo, que pondrá nuestro chat en un estado inactivo / debajo de la pila
                 Game1.drawDialogue(_npc);
 
-                // Configurar que al terminar el diálogo, se abra de nuevo el chat
                 Game1.afterDialogues = new Game1.afterFadeFunction(() =>
                 {
                     if (Game1.CurrentEvent == null && Game1.activeClickableMenu == null)
@@ -274,7 +265,6 @@ namespace StardewAIMod.Menus
                     }
                 });
 
-                // Cerramos este menú para darle paso limpio a la caja de diálogo nativa
                 this.exitThisMenu(false);
             }
             catch (Exception ex)
@@ -296,7 +286,6 @@ namespace StardewAIMod.Menus
                 _textBox.Update();
             }
 
-            // Animar los puntos suspensivos
             _animationTimer += time.ElapsedGameTime.Milliseconds;
             if (_animationTimer > 500)
             {
@@ -310,33 +299,27 @@ namespace StardewAIMod.Menus
 
         public override void draw(SpriteBatch b)
         {
-            // Atenuar levemente el fondo de la pantalla (como otros menús)
             b.Draw(Game1.fadeToBlackRect, new Rectangle(0, 0, Game1.uiViewport.Width, Game1.uiViewport.Height), Color.Black * 0.4f);
 
-            // Dibujar la caja principal nativa (usando la textura base de menú)
             IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
                 this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height, Color.White, 1f, true);
 
             int padding = 32;
 
-            // Dibujar un subtítulo o título
             string title = $"Chateando con {_npc.Name}";
             Utility.drawTextWithShadow(b, title, Game1.dialogueFont,
                 new Vector2(this.xPositionOnScreen + padding, this.yPositionOnScreen + padding), Game1.textColor);
 
-            // Intentar dibujar el Portrait del NPC si lo tiene
             if (_npc.Portrait != null)
             {
                 b.Draw(_npc.Portrait,
                     new Vector2(this.xPositionOnScreen + padding, this.yPositionOnScreen + padding + 48),
-                    new Rectangle(0, 0, 64, 64), // Frame base del retrato
-                    Color.White, 0f, Vector2.Zero, 2f, SpriteEffects.None, 0.8f); // Escalado x2 (128x128)
+                    new Rectangle(0, 0, 64, 64),
+                    Color.White, 0f, Vector2.Zero, 2f, SpriteEffects.None, 0.8f);
             }
 
-            // Dibujar la caja de texto o estado de pensamiento
             if (_isWaitingForResponse)
             {
-                // Dibujar un mensaje de "Pensando..." en lugar del textbox
                 string thinkingText = $"Pensando{_thinkingEllipsis}";
                 Utility.drawTextWithShadow(b, thinkingText, Game1.dialogueFont,
                     new Vector2(_textBox.X, _textBox.Y + 16), Color.DarkGray);
@@ -345,7 +328,6 @@ namespace StardewAIMod.Menus
             {
                 _textBox.Draw(b);
 
-                // Placeholder si el texto está vacío
                 if (string.IsNullOrEmpty(_textBox.Text))
                 {
                     Utility.drawTextWithShadow(b, "Escribe tu mensaje...", Game1.smallFont,
@@ -355,14 +337,12 @@ namespace StardewAIMod.Menus
                 _sendButton.draw(b);
             }
 
-            // Mostrar el mensaje de error si ocurre algo con la IA
             if (!string.IsNullOrEmpty(_errorMessage))
             {
                 Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont,
                     new Vector2(_textBox.X, _textBox.Y - 24), Color.Red);
             }
 
-            // Dibujar el cursor del mouse al final
             drawMouse(b);
         }
 
@@ -396,7 +376,6 @@ namespace StardewAIMod.Menus
 
         protected override void cleanupBeforeExit()
         {
-            // MUY IMPORTANTE para evitar memory leaks o bloqueos de inputs
             if (Game1.keyboardDispatcher.Subscriber == _textBox)
             {
                 Game1.keyboardDispatcher.Subscriber = null;
