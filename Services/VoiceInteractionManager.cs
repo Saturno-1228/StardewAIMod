@@ -153,6 +153,12 @@ namespace StardewAIMod.Services
             _targetNpc.CurrentDialogue.Clear();
             _targetNpc.CurrentDialogue.Push(new Dialogue(_targetNpc, null, cleanResponse));
             Game1.drawDialogue(_targetNpc);
+
+            // Prevent first-time greeting
+            if (Game1.player.friendshipData.ContainsKey(_targetNpc.Name))
+            {
+                Game1.player.friendshipData[_targetNpc.Name].TalkedToToday = true;
+            }
         }
 
         private string FormatDialogueText(string text)
@@ -173,12 +179,6 @@ namespace StardewAIMod.Services
             }
 
             return formatted.ToString().Trim();
-
-            // Prevent first-time greeting
-            if (Game1.player.friendshipData.ContainsKey(_targetNpc.Name))
-            {
-                Game1.player.friendshipData[_targetNpc.Name].TalkedToToday = true;
-            }
         }
     }
 }
