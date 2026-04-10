@@ -70,9 +70,12 @@ namespace StardewAIMod.Services
 
             byte[] audioData = _audioRecorder.StopRecording();
 
-            if (audioData == null || audioData.Length == 0)
+            // 44 bytes is just the WAV header. We need actual audio data.
+            // 1 second of 16-bit mono audio at 48000Hz (typical XNA mic) is 96000 bytes.
+            // Let's require at least 0.5 seconds of audio (~48000 bytes) to avoid useless requests.
+            if (audioData == null || audioData.Length < 48000)
             {
-                _monitor.Log("[Studio Corvus] ⚠️ No se capturó audio válido.", LogLevel.Warn);
+                _monitor.Log("[Studio Corvus] ⚠️ Audio demasiado corto o inválido.", LogLevel.Warn);
                 Game1.addHUDMessage(new HUDMessage("No se detectó voz.", HUDMessage.error_type));
                 return;
             }
