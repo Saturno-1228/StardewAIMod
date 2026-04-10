@@ -294,13 +294,13 @@ namespace StardewAIMod
         {
             NPC closest = null;
             float minDistance = float.MaxValue;
-            var playerPos = Game1.player.getTileLocation();
+            var playerPos = Game1.player.Tile;
 
             foreach (var npc in Game1.currentLocation.characters)
             {
                 if (!npc.IsVillager || !npc.CanSocialize) continue;
 
-                float dist = Microsoft.Xna.Framework.Vector2.Distance(playerPos, npc.getTileLocation());
+                float dist = Microsoft.Xna.Framework.Vector2.Distance(playerPos, npc.Tile);
                 if (dist <= maxDistance && dist < minDistance)
                 {
                     minDistance = dist;
