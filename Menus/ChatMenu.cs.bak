@@ -12,10 +12,9 @@ using StardewAIMod.Models;
 namespace StardewAIMod.Menus
 {
     /// <summary>
-    /// Interfaz interactiva y personalizada para escribirle al NPC.
-    /// Reescrita desde cero heredando de IClickableMenu.
+    /// Interfaz interactiva para escribirle al NPC.
     /// </summary>
-    public class ChatMenu : IClickableMenu
+    public class ChatMenu : DialogueBox
     {
         private readonly NPC _npc;
         private readonly VeniceApiService _veniceApi;
@@ -25,17 +24,15 @@ namespace StardewAIMod.Menus
 
         private TextBox _textBox;
         private ClickableTextureComponent _sendButton;
-
+                private bool _isTextBoxVisible = false;
         private bool _isWaitingForResponse = false;
         private string _errorMessage = "";
+
         private readonly string _modDirectory;
 
-        // Timer for basic animations (ellipsis for "Thinking...")
-        private int _animationTimer = 0;
-        private string _thinkingEllipsis = "";
 
         public ChatMenu(NPC npc, VeniceApiService veniceApi, MemoryService memoryService, ModConfig config, string modDirectory)
-            : base()
+            : base(new Dialogue(npc, null, "Say something..."))
         {
             _npc = npc;
             _veniceApi = veniceApi;
@@ -44,95 +41,74 @@ namespace StardewAIMod.Menus
             _modDirectory = modDirectory;
             _promptBuilder = new PromptBuilder(modDirectory);
 
-            // Calcular el tamaño y posición del menú en pantalla (centrado en la parte inferior)
-            this.width = 800;
-            this.height = 300;
+            // Subimos el diálogo principal para hacer espacio en la parte inferior
+            this.yPositionOnScreen -= 120;
 
-            // Centrado horizontalmente, abajo dejando algo de margen
-            this.xPositionOnScreen = (Game1.uiViewport.Width / 2) - (this.width / 2);
-            this.yPositionOnScreen = Game1.uiViewport.Height - this.height - 64;
-
-            int padding = 32;
+            int boxY = this.yPositionOnScreen + this.height; // Justo debajo del diálogo de Haley/NPC
+            int padding = 24; // Espaciado limpio y simétrico
 
             Texture2D textBoxTexture = Game1.content.Load<Texture2D>("LooseSprites\\textBox");
 
-            // Configurar el campo de texto
-            // Dejar espacio para el portrait a la izquierda y el botón a la derecha
-            int portraitWidth = 128; // Espacio aproximado para el portrait y el margen
-
+            // Campo de texto minimalista
             _textBox = new TextBox(textBoxTexture, null, Game1.dialogueFont, Game1.textColor)
             {
-                X = this.xPositionOnScreen + padding + portraitWidth + 16,
-                Y = this.yPositionOnScreen + this.height - padding - 64, // Abajo dentro de la caja
-                Width = this.width - portraitWidth - (padding * 3) - 64 - 16, // Espacio restante menos el botón de envío
-                Height = 64, // Altura estándar para la textura de textBox
+                X = this.xPositionOnScreen + padding,
+                Y = boxY + padding,
+                Width = this.width - (padding * 3) - 64, // Calculado para dejar espacio exacto al micrófono
+                Height = 50,
                 limitWidth = false,
-                textLimit = 200, // Limite razonable para un prompt (puede ser mayor si se desea)
+                textLimit = 200,
                 Selected = true
             };
-
             _textBox.Text = "";
+            _isTextBoxVisible = true;
             Game1.keyboardDispatcher.Subscriber = _textBox;
 
-            // Configurar el botón de micrófono/envío alineado a la derecha de la caja de texto
+            // Botón de micrófono alineado a la derecha
             _sendButton = new ClickableTextureComponent(
-                new Rectangle(_textBox.X + _textBox.Width + 16, _textBox.Y, 64, 64),
+                new Rectangle(_textBox.X + _textBox.Width + padding, _textBox.Y - 4, 64, 64),
                 Game1.mouseCursors,
-                new Rectangle(16, 368, 16, 16), // Globo / mic
-                4f // Escala
+                new Rectangle(16, 368, 16, 16), // Textura de globo/micrófono de Stardew
+                4f // Escala para que mida exactamente 64x64
             );
         }
 
+
+
+
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
-            // Solo procesar clics si no estamos esperando la API
-            if (_isWaitingForResponse)
-                return;
+            base.receiveLeftClick(x, y, playSound);
 
-            _textBox.Update();
+            if (_isTextBoxVisible)
+            {
+                _textBox.Update();
 
-            if (_sendButton.containsPoint(x, y))
-            {
-                if (playSound) Game1.playSound("coin");
-                SendMessage();
-            }
-            else if (isWithinBounds(x, y))
-            {
-                // Si hizo clic dentro del menú general, asegurarse de que el campo de texto mantenga foco
-                // o se seleccione si se hace clic específicamente sobre él.
-                Rectangle textBoxBounds = new Rectangle(_textBox.X, _textBox.Y, _textBox.Width, _textBox.Height);
-                if (textBoxBounds.Contains(x, y))
+                if (_sendButton.containsPoint(x, y) && !_isWaitingForResponse)
                 {
-                    _textBox.Selected = true;
-                    Game1.keyboardDispatcher.Subscriber = _textBox;
+                    SendMessage();
                 }
-            }
-            else
-            {
-                // Si hace clic fuera de la ventana completamente, perdemos el foco (o cerramos el menú, opcional).
-                _textBox.Selected = false;
-                // exitThisMenu(false); // Descomenta si prefieres que se cierre al hacer clic fuera.
             }
         }
 
+
         public override void receiveKeyPress(Keys key)
         {
-            if (key == Keys.Escape)
-            {
-                exitThisMenu(false);
-                return;
-            }
-
-            if (_textBox.Selected && key == Keys.Enter && !_isWaitingForResponse)
+            if (_isTextBoxVisible && key == Keys.Enter && !_isWaitingForResponse)
             {
                 SendMessage();
-                return;
             }
-
-            // Evitar que las teclas afecten al juego base si el textbox está seleccionado
-            if (!_textBox.Selected)
+            else if (key == Keys.Escape)
             {
-                base.receiveKeyPress(key);
+                exitThisMenu();
+            }
+            else
+            {
+                // Solo llamar a base.receiveKeyPress si el TextBox NO está activo
+                if (!_isTextBoxVisible || !_textBox.Selected)
+                {
+                    base.receiveKeyPress(key);
+                }
             }
         }
 
@@ -146,8 +122,10 @@ namespace StardewAIMod.Menus
 
             try
             {
+                // Construir Contexto
                 var memory = _memoryService.GetMemory(_npc.Name);
 
+                // Actualizar datos en vivo del jugador y relación
                 memory.PlayerName = Game1.player.Name;
                 memory.FriendshipHearts = Game1.player.getFriendshipHeartLevelForNPC(_npc.Name);
 
@@ -178,6 +156,7 @@ namespace StardewAIMod.Menus
                 }
                 memory.RelationshipStatus = relationship;
 
+                // Información del entorno y ropa
                 string playerClothing = $"Hat: {(Game1.player.hat.Value != null ? Game1.player.hat.Value.DisplayName : "None")}, " +
                                         $"Shirt: {(Game1.player.shirtItem.Value != null ? Game1.player.shirtItem.Value.DisplayName : "Standard")}, " +
                                         $"Pants: {(Game1.player.pantsItem.Value != null ? Game1.player.pantsItem.Value.DisplayName : "Standard")}";
@@ -194,6 +173,8 @@ namespace StardewAIMod.Menus
                     ? $"Nearby characters: {string.Join(", ", nearbyNpcs)}"
                     : "You and the player are mostly alone here.";
 
+
+                // Datos extra: Objeto en mano, cumpleaños, y estado del jugador
                 string holdingItem = Game1.player.ActiveObject != null ? Game1.player.ActiveObject.DisplayName : "Nothing";
                 bool isBirthday = _npc.isBirthday();
                 string playerStatus = "Healthy and energetic.";
@@ -218,8 +199,10 @@ namespace StardewAIMod.Menus
 
                 string systemPrompt = _promptBuilder.BuildSystemPrompt(_npc.Name, memory, currentContext, playerText);
 
+                // Añadir el mensaje actual al historial
                 _memoryService.AddToConversationHistory(_npc.Name, "player", playerText);
 
+                // Llamar a Venice AI
                 string reply = await _veniceApi.SendMessageAsync(systemPrompt, memory.ConversationHistory);
 
                 if (reply.StartsWith("[") && (reply.Contains("Error") || reply.Contains("No response")))
@@ -228,43 +211,56 @@ namespace StardewAIMod.Menus
                     return;
                 }
 
+                // Limpiar mensaje de error previo si la respuesta fue exitosa
                 _errorMessage = "";
 
+                // Sincronización: Informar al juego base que el jugador ha hablado con el NPC
                 if (Game1.player.friendshipData.ContainsKey(_npc.Name))
                 {
                     Game1.player.friendshipData[_npc.Name].TalkedToToday = true;
                 }
 
+                // Guardar respuesta de la IA en historial
                 _memoryService.AddToConversationHistory(_npc.Name, "assistant", reply);
 
+                // Consecuencias de la charla (Amistad dinámica basada en comandos de emoción)
                 if (reply.Contains("$l"))
                 {
-                    Game1.player.changeFriendship(15, _npc);
+                    Game1.player.changeFriendship(15, _npc); // +15 puntos
                 }
                 else if (reply.Contains("$h"))
                 {
-                    Game1.player.changeFriendship(10, _npc);
+                    Game1.player.changeFriendship(10, _npc); // +10 puntos
                 }
                 else if (reply.Contains("$a"))
                 {
-                    Game1.player.changeFriendship(-20, _npc);
+                    Game1.player.changeFriendship(-20, _npc); // -20 puntos (los insultos cuestan más)
                 }
 
+                // Follow Mechanic
                 if (reply.Contains("$follow"))
                 {
+                    // This is a placeholder for the actual follow logic which requires
+                    // SMAPI NPC controllers to pathfind towards the player over time.
+                    // Stardew Valley 1.6 requires setting a temporary schedule or using
+                    // 'PathFindController' with custom logic to update the target to the player's position.
+
+                    // TODO: Implement 'follower' state on NPC.
                     Game1.addHUDMessage(new HUDMessage($"{_npc.Name} is now following you! (WIP feature)", HUDMessage.newQuest_type));
                 }
 
+                // Formatear la respuesta para que las oraciones largas se dividan correctamente
+                // usando el comando de pausa/salto de diálogo de Stardew Valley: #$b#
                 string formattedReply = FormatDialogueText(reply);
 
+                // Show response via standard dialogue box!
                 _npc.CurrentDialogue.Push(new Dialogue(_npc, null, formattedReply));
-
-                // Mostrar el diálogo nativo, que pondrá nuestro chat en un estado inactivo / debajo de la pila
                 Game1.drawDialogue(_npc);
 
-                // Configurar que al terminar el diálogo, se abra de nuevo el chat
+                // Configurar que una vez termine el diálogo se vuelva a abrir el ChatMenu de forma segura
                 Game1.afterDialogues = new Game1.afterFadeFunction(() =>
                 {
+                    // Evitar reabrir si hay una cinemática/evento o si el jugador ya se alejó
                     if (Game1.CurrentEvent == null && Game1.activeClickableMenu == null)
                     {
                         if (Vector2.Distance(Game1.player.Tile, _npc.Tile) < 3)
@@ -274,8 +270,8 @@ namespace StardewAIMod.Menus
                     }
                 });
 
-                // Cerramos este menú para darle paso limpio a la caja de diálogo nativa
-                this.exitThisMenu(false);
+                // Exit this custom chat menu since we show the standard dialogue
+                this.exitThisMenu();
             }
             catch (Exception ex)
             {
@@ -288,82 +284,59 @@ namespace StardewAIMod.Menus
             }
         }
 
-        public override void update(GameTime time)
-        {
-            base.update(time);
-            if (_textBox != null && _textBox.Selected)
-            {
-                _textBox.Update();
-            }
-
-            // Animar los puntos suspensivos
-            _animationTimer += time.ElapsedGameTime.Milliseconds;
-            if (_animationTimer > 500)
-            {
-                _animationTimer = 0;
-                if (_thinkingEllipsis.Length < 3)
-                    _thinkingEllipsis += ".";
-                else
-                    _thinkingEllipsis = "";
-            }
-        }
 
         public override void draw(SpriteBatch b)
         {
-            // Atenuar levemente el fondo de la pantalla (como otros menús)
-            b.Draw(Game1.fadeToBlackRect, new Rectangle(0, 0, Game1.uiViewport.Width, Game1.uiViewport.Height), Color.Black * 0.4f);
+            base.draw(b);
 
-            // Dibujar la caja principal nativa (usando la textura base de menú)
-            IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
-                this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height, Color.White, 1f, true);
-
-            int padding = 32;
-
-            // Dibujar un subtítulo o título
-            string title = $"Chateando con {_npc.Name}";
-            Utility.drawTextWithShadow(b, title, Game1.dialogueFont,
-                new Vector2(this.xPositionOnScreen + padding, this.yPositionOnScreen + padding), Game1.textColor);
-
-            // Intentar dibujar el Portrait del NPC si lo tiene
-            if (_npc.Portrait != null)
+            if (_isTextBoxVisible)
             {
-                b.Draw(_npc.Portrait,
-                    new Vector2(this.xPositionOnScreen + padding, this.yPositionOnScreen + padding + 48),
-                    new Rectangle(0, 0, 64, 64), // Frame base del retrato
-                    Color.White, 0f, Vector2.Zero, 2f, SpriteEffects.None, 0.8f); // Escalado x2 (128x128)
-            }
+                int boxY = this.yPositionOnScreen + this.height;
+                int boxHeight = 100; // Altura fija y proporcionada
 
-            // Dibujar la caja de texto o estado de pensamiento
-            if (_isWaitingForResponse)
-            {
-                // Dibujar un mensaje de "Pensando..." en lugar del textbox
-                string thinkingText = $"Pensando{_thinkingEllipsis}";
-                Utility.drawTextWithShadow(b, thinkingText, Game1.dialogueFont,
-                    new Vector2(_textBox.X, _textBox.Y + 16), Color.DarkGray);
-            }
-            else
-            {
+                // Fondo del chat interactivo
+                IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                    this.xPositionOnScreen, boxY, this.width, boxHeight, Color.White, 1f, true);
+
                 _textBox.Draw(b);
 
-                // Placeholder si el texto está vacío
+                // Texto de ayuda cuando está vacío
                 if (string.IsNullOrEmpty(_textBox.Text))
                 {
-                    Utility.drawTextWithShadow(b, "Escribe tu mensaje...", Game1.smallFont,
-                        new Vector2(_textBox.X + 16, _textBox.Y + 16), Color.Gray);
+                    Utility.drawTextWithShadow(b, "Escribe o usa el micrófono...", Game1.smallFont,
+                        new Vector2(_textBox.X + 16, _textBox.Y + 12), Color.Gray);
                 }
 
-                _sendButton.draw(b);
+                if (!_isWaitingForResponse)
+                {
+                    _sendButton.draw(b); // Dibuja el micrófono
+                }
+                else
+                {
+                    // Indicador de estado minimalista
+                    Utility.drawTextWithShadow(b, "Pensando...", Game1.smallFont,
+                        new Vector2(_textBox.X + 16, boxY + boxHeight - 20), Color.Gray);
+                }
+
+                if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont,
+                        new Vector2(_textBox.X + 16, boxY + boxHeight - 20), Color.Red);
+                }
             }
 
-            // Mostrar el mensaje de error si ocurre algo con la IA
-            if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                Utility.drawTextWithShadow(b, _errorMessage, Game1.smallFont,
-                    new Vector2(_textBox.X, _textBox.Y - 24), Color.Red);
-            }
-
-            // Dibujar el cursor del mouse al final
             drawMouse(b);
+        }
+
+
+
+        public override void update(GameTime time)
+        {
+            base.update(time);
+            if (_isTextBoxVisible && _textBox != null)
+            {
+                _textBox.Update();
+            }
         }
 
         private string FormatDialogueText(string text)
@@ -371,12 +344,14 @@ namespace StardewAIMod.Menus
             if (string.IsNullOrEmpty(text))
                 return text;
 
+            // Enfoque basado en longitud respetando los límites de palabras (Word-Boundary Pagination)
             string[] words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             string currentBlock = "";
             string finalResult = "";
 
             foreach (var word in words)
             {
+                // Si al añadir esta palabra (más el espacio) excedemos el límite de 120 y ya tenemos algo, cortamos la página
                 if (currentBlock.Length + word.Length + (currentBlock.Length > 0 ? 1 : 0) > 120 && currentBlock.Length > 0)
                 {
                     finalResult += currentBlock.TrimEnd() + "#$b#";
@@ -396,11 +371,7 @@ namespace StardewAIMod.Menus
 
         protected override void cleanupBeforeExit()
         {
-            // MUY IMPORTANTE para evitar memory leaks o bloqueos de inputs
-            if (Game1.keyboardDispatcher.Subscriber == _textBox)
-            {
-                Game1.keyboardDispatcher.Subscriber = null;
-            }
+            Game1.keyboardDispatcher.Subscriber = null;
             base.cleanupBeforeExit();
         }
     }
