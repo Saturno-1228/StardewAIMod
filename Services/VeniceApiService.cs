@@ -56,7 +56,7 @@ namespace StardewAIMod.Services
                 form.Add(fileContent, "file", "voice.wav");
 
                 // Explicitly define the model for transcription as required by Venice AI Docs
-                var modelContent = new StringContent("openai/whisper-large-v3");
+                var modelContent = new StringContent("nvidia/parakeet-tdt-0.6b-v3");
                 form.Add(modelContent, "model");
 
                 var response = await _httpClient.PostAsync(_transcriptionEndpoint, form);
