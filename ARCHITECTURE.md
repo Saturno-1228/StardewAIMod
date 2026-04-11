@@ -11,6 +11,9 @@ StudioCorvus/StardewAIMod/
 │
 ├── Services/
 │   ├── VeniceApiService.cs
+│   ├── WhisperTranscriptionService.cs ⬅️ NUEVO
+│   ├── VoiceInteractionManager.cs
+│   ├── AudioRecorder.cs
 │   ├── MemoryService.cs
 │   └── PromptBuilder.cs
 │

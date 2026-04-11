@@ -23,80 +23,14 @@ namespace StardewAIMod.Services
         private DateTime _lastRequestTime = DateTime.MinValue;
         private readonly TimeSpan _minTimeBetweenRequests = TimeSpan.FromSeconds(3); // 3 seconds cooldown
 
-        private readonly string _transcriptionEndpoint;
-
-        public VeniceApiService(string apiKey, string model, string endpoint, string transcriptionEndpoint)
+        public VeniceApiService(string apiKey, string model, string endpoint)
         {
             _apiKey = apiKey;
             _model = model;
             _endpoint = endpoint;
-            _transcriptionEndpoint = string.IsNullOrEmpty(transcriptionEndpoint)
-                ? "https://api.venice.ai/api/v1/audio/transcriptions"
-                : transcriptionEndpoint;
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-        }
-
-        /// <summary>
-        /// Envía un archivo de audio WAV a Venice AI para obtener su transcripción.
-        /// </summary>
-        /// <param name="wavData">Datos en bytes del archivo WAV.</param>
-        /// <returns>Texto transcrito de la voz del jugador.</returns>
-        public async Task<string> TranscribeAudioAsync(byte[] wavData)
-        {
-            if (wavData == null || wavData.Length == 0) return string.Empty;
-
-            try
-            {
-                using var form = new MultipartFormDataContent();
-
-                var fileContent = new ByteArrayContent(wavData);
-                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-                form.Add(fileContent, "file", "voice.wav");
-
-                // Explicitly define the model for transcription as required by Venice AI Docs
-                var modelContent = new StringContent("nvidia/parakeet-tdt-0.6b-v3");
-                form.Add(modelContent, "model");
-
-                var response = await _httpClient.PostAsync(_transcriptionEndpoint, form);
-                string responseJson = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string errorDetail = "";
-                    try
-                    {
-                        using var errorDoc = JsonDocument.Parse(responseJson);
-                        if (errorDoc.RootElement.TryGetProperty("error", out var errorElement))
-                        {
-                            errorDetail = " - " + errorElement.GetString();
-                        }
-                        else
-                        {
-                            errorDetail = " - " + responseJson;
-                        }
-                    }
-                    catch
-                    {
-                        errorDetail = string.IsNullOrWhiteSpace(responseJson) ? "" : " - " + responseJson;
-                    }
-
-                    return $"[Venice Transcription Error: {response.StatusCode}{errorDetail}]";
-                }
-
-                using var doc = JsonDocument.Parse(responseJson);
-                if (doc.RootElement.TryGetProperty("text", out var textElement))
-                {
-                    return textElement.GetString();
-                }
-
-                return string.Empty;
-            }
-            catch (Exception ex)
-            {
-                return $"[Transcription Error: {ex.Message}]";
-            }
         }
 
         /// <summary>

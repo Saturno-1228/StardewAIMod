@@ -30,3 +30,11 @@
 
 3. **Funcionalidades de Voz (V2)**
    - Conectar Text-to-Speech o Speech-to-Text en caso de que la configuración `EnableVoice` sea activada, según diseño original.
+
+## 🗣️ IMPLEMENTACIÓN DE WHISPER LOCAL (Migración de Voz)
+
+- Se eliminó completamente la dependencia de Venice AI para la transcripción de audio.
+- Se implementó `WhisperTranscriptionService` usando Whisper.net, el cual se ejecuta asíncronamente.
+- Se mejoró `AudioRecorder` para convertir el audio grabado desde `16-bit PCM` al formato `float[]` de 32 bits a `16kHz` requerido por Whisper.net (con resampler simple incluido).
+- Se implementó `Task.Run` con un `ConcurrentQueue<Action>` en `VoiceInteractionManager` para asegurar el hilo seguro (thread safety) y evitar crashes al actualizar la UI del juego nativa de Stardew Valley.
+- Se eliminaron las configuraciones obsoletas de transcripción y se centralizaron en la ruta configurable `WhisperModelPath`.

@@ -20,6 +20,7 @@ namespace StardewAIMod
 
         // Servicios
         private Services.VeniceApiService VeniceApi;
+        private Services.WhisperTranscriptionService WhisperApi;
         private Services.MemoryService Memory;
         private Services.VoiceInteractionManager VoiceManager;
 
@@ -107,9 +108,12 @@ namespace StardewAIMod
             this.VeniceApi = new Services.VeniceApiService(
                 this.Secrets.VeniceApiKey,
                 this.Config.VeniceModel,
-                this.Config.VeniceEndpoint,
-                this.Config.VeniceTranscriptionEndpoint
+                this.Config.VeniceEndpoint
             );
+
+            // Inicializar WhisperTranscriptionService
+            string whisperModelFullPath = Path.Combine(this.Helper.DirectoryPath, this.Config.WhisperModelPath);
+            this.WhisperApi = new Services.WhisperTranscriptionService(whisperModelFullPath, this.Monitor);
 
             // Inicializar MemoryService
             this.Memory = new Services.MemoryService(this.Helper, this.Monitor, this.Config.MaxMemoryPerNpc);
@@ -117,6 +121,7 @@ namespace StardewAIMod
             // Inicializar VoiceInteractionManager
             this.VoiceManager = new Services.VoiceInteractionManager(
                 this.VeniceApi,
+                this.WhisperApi,
                 this.Memory,
                 this.Config,
                 this.Monitor,

@@ -17,8 +17,12 @@ namespace StardewAIMod
         /// <summary>Endpoint base de Venice API.</summary>
         public string VeniceEndpoint { get; set; } = "https://api.venice.ai/api/v1/chat/completions";
 
-        /// <summary>Endpoint para transcripciones de Venice API.</summary>
-        public string VeniceTranscriptionEndpoint { get; set; } = "https://api.venice.ai/api/v1/audio/transcriptions";
+        // ═══════════════════════════════════════
+        //  WHISPER AI — Modelo Local
+        // ═══════════════════════════════════════
+
+        /// <summary>Ruta al modelo Whisper local.</summary>
+        public string WhisperModelPath { get; set; } = "assets/ggml-base.bin";
 
         // ═══════════════════════════════════════
         //  MEMORIA DE NPCs
