@@ -48,7 +48,7 @@ namespace StardewAIMod.Services
 
         public void Update() { }
 
-        public byte[] StopRecording()
+        public float[] StopRecording()
         {
             if (!_isRecording || _microphone == null) return null;
 
@@ -60,40 +60,51 @@ namespace StardewAIMod.Services
             _audioStream.Dispose();
             _audioStream = null;
 
-            // Build WAV headers
-            return BuildWavFile(pcmData, _microphone.SampleRate, 1, 16);
+            // Convert to 16kHz float[] for Whisper
+            return ConvertTo16kHzFloat(pcmData, _microphone.SampleRate);
         }
 
-        private byte[] BuildWavFile(byte[] pcmData, int sampleRate, int channels, int bitsPerSample)
+        private float[] ConvertTo16kHzFloat(byte[] pcmData, int sampleRate)
         {
-            using (var memStream = new MemoryStream())
-            using (var writer = new BinaryWriter(memStream))
+            int numSamples = pcmData.Length / 2; // 16-bit PCM = 2 bytes per sample
+            float[] floatData = new float[numSamples];
+
+            // Convert 16-bit PCM to 32-bit float [-1.0f, 1.0f]
+            for (int i = 0; i < numSamples; i++)
             {
-                int byteRate = sampleRate * channels * (bitsPerSample / 8);
-                int blockAlign = channels * (bitsPerSample / 8);
-
-                // RIFF chunk
-                writer.Write(new char[] { 'R', 'I', 'F', 'F' });
-                writer.Write(36 + pcmData.Length); // ChunkSize
-                writer.Write(new char[] { 'W', 'A', 'V', 'E' });
-
-                // fmt chunk
-                writer.Write(new char[] { 'f', 'm', 't', ' ' });
-                writer.Write(16); // Subchunk1Size for PCM
-                writer.Write((short)1); // AudioFormat (1 = PCM)
-                writer.Write((short)channels);
-                writer.Write(sampleRate);
-                writer.Write(byteRate);
-                writer.Write((short)blockAlign);
-                writer.Write((short)bitsPerSample);
-
-                // data chunk
-                writer.Write(new char[] { 'd', 'a', 't', 'a' });
-                writer.Write(pcmData.Length);
-                writer.Write(pcmData);
-
-                return memStream.ToArray();
+                short sample = BitConverter.ToInt16(pcmData, i * 2);
+                floatData[i] = sample / 32768.0f;
             }
+
+            // Resample to 16kHz if necessary
+            if (sampleRate != 16000)
+            {
+                floatData = Resample(floatData, sampleRate, 16000);
+            }
+
+            return floatData;
+        }
+
+        private float[] Resample(float[] input, int inputSampleRate, int outputSampleRate)
+        {
+            if (inputSampleRate == outputSampleRate) return input;
+
+            double ratio = (double)inputSampleRate / outputSampleRate;
+            int outLength = (int)(input.Length / ratio);
+            float[] output = new float[outLength];
+
+            // Simple linear interpolation
+            for (int i = 0; i < outLength; i++)
+            {
+                double inputIndex = i * ratio;
+                int index1 = (int)Math.Floor(inputIndex);
+                int index2 = Math.Min(index1 + 1, input.Length - 1);
+                double fraction = inputIndex - index1;
+
+                output[i] = (float)((1.0 - fraction) * input[index1] + fraction * input[index2]);
+            }
+
+            return output;
         }
     }
 }
