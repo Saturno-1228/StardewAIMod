@@ -126,8 +126,9 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 *Soluciones a implementar:*
 1. **Pausa Selectiva (Overlays No Bloqueantes):** Al presionar el botón de Push-to-Talk, **el juego no se pausa**. El jugador sigue caminando y hablando. Un pequeño icono de "Micrófono" y "Procesando..." aparece en la esquina inferior.
 2. **Buffering y Entrega Asíncrona:** Cuando Venice responde, el texto se guarda en una cola.
-3. **El Enganche (Triggering):** Una vez que la IA tiene la respuesta lista, si el jugador está cerca del NPC, el NPC girará hacia él y forzará la apertura del `DialogueBox` para decir la frase. (Si el jugador ya se alejó mucho, entra la lógica de "Abandono de Conversación").
-4. **La "Charla Activa" (Modo Lock-in):** Una vez que el `DialogueBox` se abre, el tiempo se pausa como en el juego normal para que el jugador lea cómodamente. Desde esa misma caja de diálogo, el jugador puede presionar el botón de Push-to-Talk de nuevo. En ese estado (Menú Abierto), podemos mostrar una animación de "Escribiendo..." o "Pensando..." en la caja mientras la IA procesa la siguiente línea.
+3. **Burbujas de Texto en Tiempo Real (Overhead Bubbles):** Para interacciones dinámicas (como banters espontáneos o respuestas rápidas mientras caminas), **evitaremos abrir la caja de diálogo que pausa el juego**. En su lugar, utilizaremos burbujas de texto flotantes sobre la cabeza del NPC (sistema similar a los `SpeechBubbles` nativos de SMAPI o al mod de multiplayer).
+   - *Gestión de Textos Largos:* Si la IA da una respuesta muy larga, el mod la dividirá inteligentemente en fragmentos pequeños (oraciones) y las mostrará una tras otra en la burbuja cada ciertos segundos (ej. 1 línea cada 3 segundos), permitiendo una experiencia 100% inmersiva en tiempo real sin congelar el mundo.
+4. **Modo Conversación Profunda (Opcional/Lock-in):** Si el jugador quiere tener una conversación larga y estructurada, puede "acercarse e interactuar" (clic derecho) mientras habla, lo que sí abrirá el `DialogueBox` nativo para pausar el mundo y leer con calma. Este sistema híbrido da lo mejor de ambos mundos.
 
 ---
 
