@@ -84,5 +84,11 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ---
 
+## 🔮 VISIÓN FUTURA Y BACKLOG (Añadido en Sesión 0)
+- **Conversaciones Grupales (Múltiples NPCs):** Permitir que el jugador hable con más de un NPC a la vez. *Estrategia:* Implementar primero el MVP (1 a 1) para asegurar estabilidad en la pipeline de audio/texto, y añadir la gestión de grupos en una fase avanzada (requerirá lógica de interrupción y turnos entre NPCs).
+- **Sistema Local de Machine Learning para Memoria/Emociones:** Explorar la viabilidad de un modelo ML ligero local (ej. Embeddings via ONNX o SQLite-VSS) para gestionar la recuperación de recuerdos (RAG) y la evolución emocional de los NPCs sin depender de llamadas constantes a la API externa, ahorrando tokens y reduciendo latencia.
+
+---
+
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 *(Vacío por ahora)*
