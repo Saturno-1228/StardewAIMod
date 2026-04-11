@@ -76,7 +76,7 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 ---
 
 ## 📌 TAREAS PENDIENTES (Siguientes Fases)
-- [ ] Compilar el proyecto en local y verificar que carga exitosamente en la consola SMAPI mostrando "Stardew Living Valley loaded".
+- [x] Compilar el proyecto en local y verificar que carga exitosamente en la consola SMAPI mostrando "Stardew Living Valley loaded". (Resuelto error CS1617 bajando LangVersion a 10 y activando EnableModDeploy).
 - [ ] Fase 1: Implementar el sistema de UI y atajos para Voice-to-Text (Push to Talk).
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline.
 - [ ] Fase 3: Integrar la comunicación con Venice API y el sistema PromptBuilder.
@@ -122,4 +122,4 @@ Este apartado compila y refina todas las metas arquitectónicas y mecánicas dis
 Soy tu usuario. Revisa continuamente esta sección "Master Design Document" antes de generar código. Me gusta la inmersión, el balance y no romper el gameplay core de Stardew. Antes de diseñar una nueva característica técnica, pregúntame siempre: *"¿Crees que esta forma rompe la inmersión? ¿Se te ocurre una manera más fluida de integrarlo al juego?"*
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
-*(Vacío por ahora)*
+- **Error CS1617 al compilar (`LangVersion 12`)**: Se solucionó cambiando la versión de C# de `12` a `10` en el `.csproj` ya que el SDK local de .NET 6 no soporta C# 12. Se reactivó la variable de SMAPI `EnableModDeploy` en el archivo de proyecto para asegurar el autodespliegue.
