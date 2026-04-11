@@ -87,6 +87,11 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 ## 🔮 VISIÓN FUTURA Y BACKLOG (Añadido en Sesión 0)
 - **Conversaciones Grupales (Múltiples NPCs):** Permitir que el jugador hable con más de un NPC a la vez. *Estrategia:* Implementar primero el MVP (1 a 1) para asegurar estabilidad en la pipeline de audio/texto, y añadir la gestión de grupos en una fase avanzada (requerirá lógica de interrupción y turnos entre NPCs).
 - **Sistema Local de Machine Learning para Memoria/Emociones:** Explorar la viabilidad de un modelo ML ligero local (ej. Embeddings via ONNX o SQLite-VSS) para gestionar la recuperación de recuerdos (RAG) y la evolución emocional de los NPCs sin depender de llamadas constantes a la API externa, ahorrando tokens y reduciendo latencia.
+- **Sistema Profundo de Personalidades y Lore:**
+  - Cada NPC tendrá un perfil único (Marnie vs Haley) basado en su historia, secretos, profesión, gustos y easter eggs.
+  - Sus respuestas y actitud evolucionarán orgánicamente según el **nivel de amistad actual con el jugador**.
+  - **Red Social Interna:** Los NPCs tendrán conciencia de su nivel de relación y opiniones sobre **otros NPCs** del valle.
+  - **Multiplicadores Dinámicos de Amistad:** La progresión social no será plana. Personajes introvertidos o desconfiados tendrán un multiplicador menor (costará más ganar su confianza), mientras que los extrovertidos serán más fáciles de entablar amistad.
 
 ---
 
