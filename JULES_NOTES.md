@@ -1,6 +1,6 @@
 # Stardew Living Valley - Jules Notes
 
-**Fecha de Inicio:** Abril 2024
+**Fecha de Inicio:** Abril 2026
 **Proyecto:** Stardew Living Valley (Mod de IA y Voice-to-Text para Stardew Valley)
 **Autor:** Studio Corvus
 
@@ -83,6 +83,43 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 - [ ] Fase 4: Implementar sistema de "ConversationHistory" e inyección de memorias diarias.
 
 ---
+
+## 🔮 MASTER DESIGN DOCUMENT: VISIÓN FUTURA Y ARQUITECTURA
+
+Este apartado compila y refina todas las metas arquitectónicas y mecánicas discutidas en nuestras sesiones de "brainstorming". Este es el plano definitivo para guiar el desarrollo de las futuras versiones de "Stardew Living Valley".
+
+### 1. Sistema Híbrido de Interfaz y Manejo del Tiempo (UI/UX)
+**Objetivo:** Evitar que el jugador sufra interrupciones abruptas por la latencia de las llamadas a API (Whisper/Venice).
+- **Interacción Casual (Burbujas en tiempo real):** Al usar Push-to-talk de paso, el juego **NO se pausa**. El jugador sigue farmeando. La respuesta se mostrará usando `SpeechBubbles` flotantes sobre la cabeza del NPC.
+  - *Manejo de Textos Largos:* Si la IA genera un párrafo extenso, el código C# cortará la cadena usando los puntos finales (`.`) y rotará las burbujas cada ~3 segundos para dar tiempo a leer.
+- **Conversación Profunda (Lock-in):** Si el jugador "interactúa" formalmente (clic derecho) con el NPC para charlar, se usará el `DialogueBox` clásico (con los retratos grandes). **Aquí el juego sí se pausa** permitiendo charlas profundas e inmersivas.
+
+### 2. Arquitectura de Machine Learning Local (Offline & Rápida)
+**Objetivo:** Reducir gasto de tokens en Venice API, acelerar respuestas y permitir lógicas complejas offline.
+*Implementación Técnica:* Utilizar C# ML.NET o ONNX Runtime integrados en el mod.
+- **RAG (Retrieval-Augmented Generation) Local:** Convertiremos las memorias en vectores (Embeddings con un modelo muy ligero como `all-MiniLM`). Al hablar, el sistema local encuentra rápidamente qué "recuerdo" inyectar al prompt de Venice.
+- **Motor de Emoción Instantáneo:** Un micro-modelo NLP evalúa si lo que dijiste es un insulto o halago en milisegundos, alterando la amistad *antes* de que Venice decida la respuesta textual.
+- **Clasificador de Favores:** Un modelo pequeño detecta la intención oculta en la charla (ej. "consígueme madera") y dispara el evento en el código del juego.
+
+### 3. Sistemas de Personalidad, Lore y Dinámicas Sociales
+**Objetivo:** Que ningún NPC se sienta igual a otro.
+- **Perfiles Profundos:** Marnie y Haley no usarán el mismo Prompt. Sus gustos, secretos y profesiones se inyectan en su base.
+- **Red de Rumores Probabilísticos:** Si ocurre un gran evento (te casas con Haley), Emily (su hermana) tiene un 95% de enterarse ese día. Krobus tiene un 0%. Al día siguiente, los NPCs con la información te abordarán sobre el tema.
+- **Multiplicadores Dinámicos:** Sebastian (introvertido) ganará menos puntos de amistad por charla que Sam (extrovertido), requiriendo más constancia para llegar a los 10 corazones.
+- **Moralidad y Precios (Consecuencias):** Tratar mal a todos los aldeanos bajará tu "Moral Global". Esto hará que la probabilidad de que te regalen cosas sea 0, e incluso podemos engancharnos al código de las tiendas para que Pierre te suba los precios un 20%.
+
+### 4. Nuevas Mecánicas de Inmersión Sensorial
+- **Reacciones al Volumen de Voz:** Ya que usamos Whisper localmente, el código puede medir los decibelios. Susurrarle a un NPC lo hace reaccionar diferente a si le gritas.
+- **Curación Contextual y Activa:** El NPC lee tu `Game1.player.health`. Si te ven desmayándote después de la mina, existe la posibilidad de que no solo hablen, sino que el código te inyecte un objeto curativo de temporada directamente a tu inventario.
+- **Retratos Nativos Inteligentes:** El ML deducirá la emoción de la respuesta y el código inyectará comandos nativos de Stardew Valley (como `$h` para sonreír) en el texto. Así, el rostro del NPC cambiará fluidamente en el `DialogueBox` sin tener que crear UI personalizada.
+- **Abandono y Rutinas Emocionales:** Si dejas al NPC hablando solo y te vas, se ofenderá. Si le rompes el corazón, el mod sobrescribirá temporalmente su `Schedule` (rutina) para que ese día se quede encerrado en su cuarto en vez de ir a la taberna.
+- **Sistema de Compañeros Temporal:** Puedes pedirles que te acompañen a la granja. Usaremos rutas temporales, pero si llega su hora de trabajar, abandonarán automáticamente el modo compañero para no romper el juego.
+
+---
+
+***
+**💡 NOTA PARA LA IA EN FUTURAS SESIONES:** 
+Soy tu usuario. Revisa continuamente esta sección "Master Design Document" antes de generar código. Me gusta la inmersión, el balance y no romper el gameplay core de Stardew. Antes de diseñar una nueva característica técnica, pregúntame siempre: *"¿Crees que esta forma rompe la inmersión? ¿Se te ocurre una manera más fluida de integrarlo al juego?"*
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 *(Vacío por ahora)*
