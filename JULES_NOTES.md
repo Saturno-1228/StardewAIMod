@@ -84,53 +84,42 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ---
 
-## 🔮 VISIÓN FUTURA Y BACKLOG (Añadido en Sesión 0)
-- **Conversaciones Grupales (Múltiples NPCs):** Permitir que el jugador hable con más de un NPC a la vez. *Estrategia:* Implementar primero el MVP (1 a 1) para asegurar estabilidad en la pipeline de audio/texto, y añadir la gestión de grupos en una fase avanzada (requerirá lógica de interrupción y turnos entre NPCs).
-- **Sistema Local de Machine Learning para Memoria/Emociones:** Explorar la viabilidad de un modelo ML ligero local (ej. Embeddings via ONNX o SQLite-VSS) para gestionar la recuperación de recuerdos (RAG) y la evolución emocional de los NPCs sin depender de llamadas constantes a la API externa, ahorrando tokens y reduciendo latencia.
-- **Sistema Profundo de Personalidades y Lore:**
-  - Cada NPC tendrá un perfil único (Marnie vs Haley) basado en su historia, secretos, profesión, gustos y easter eggs.
-  - Sus respuestas y actitud evolucionarán orgánicamente según el **nivel de amistad actual con el jugador**.
-  - **Red Social Interna:** Los NPCs tendrán conciencia de su nivel de relación y opiniones sobre **otros NPCs** del valle.
-  - **Multiplicadores Dinámicos de Amistad:** La progresión social no será plana. Personajes introvertidos o desconfiados tendrán un multiplicador menor (costará más ganar su confianza), mientras que los extrovertidos serán más fáciles de entablar amistad.
-- **Sistema de Chismes y Propagación de Información (Rumores):**
-  - Los eventos no son conocidos por todos mágicamente. Se propagan mediante **probabilidades**. Si sales con Haley, Emily (su hermana) tiene una alta probabilidad diaria de enterarse, pero alguien lejos tiene 0%.
-  - Los NPCs pueden saber solo rumores, y el jugador puede confirmarlos o negarlos.
-- **Sistema de Moralidad y Reputación General:**
-  - El trato del jugador hacia el pueblo tiene consecuencias globales. Ser mala persona reduce regalos, dificulta hacer amigos y puede tener penalizaciones (ej. Pierre subiendo los precios de su tienda).
-- **Sistema de Favores Dinámicos (Misiones Inversas):**
-  - Posibilidad de pedirle a un NPC que consiga un ítem para nosotros.
-  - La probabilidad de éxito depende del nivel de amistad y del *área de expertise* del NPC (ej. pedirle madera a Robin tiene sentido, pedirle un pastel o que vaya a la mina no).
-  - Para no romper el pathfinding, la recompensa llegará mediante **el buzón de correo** al día siguiente con una nota del NPC.
-- **Sistema de Compañeros y Citas (Followers):**
-  - Pedirle a un personaje que pasee contigo o te siga.
-  - *Solución técnica:* Utilizar sobreescritura temporal de `Schedules` (rutinas) de SMAPI para que te sigan, respetando estrictamente sus horas de trabajo irrenunciables para no romper la progresión del juego base.
+## 🔮 MASTER DESIGN DOCUMENT: VISIÓN FUTURA Y ARQUITECTURA
+
+Este apartado compila y refina todas las metas arquitectónicas y mecánicas discutidas en nuestras sesiones de "brainstorming". Este es el plano definitivo para guiar el desarrollo de las futuras versiones de "Stardew Living Valley".
+
+### 1. Sistema Híbrido de Interfaz y Manejo del Tiempo (UI/UX)
+**Objetivo:** Evitar que el jugador sufra interrupciones abruptas por la latencia de las llamadas a API (Whisper/Venice).
+- **Interacción Casual (Burbujas en tiempo real):** Al usar Push-to-talk de paso, el juego **NO se pausa**. El jugador sigue farmeando. La respuesta se mostrará usando `SpeechBubbles` flotantes sobre la cabeza del NPC.
+  - *Manejo de Textos Largos:* Si la IA genera un párrafo extenso, el código C# cortará la cadena usando los puntos finales (`.`) y rotará las burbujas cada ~3 segundos para dar tiempo a leer.
+- **Conversación Profunda (Lock-in):** Si el jugador "interactúa" formalmente (clic derecho) con el NPC para charlar, se usará el `DialogueBox` clásico (con los retratos grandes). **Aquí el juego sí se pausa** permitiendo charlas profundas e inmersivas.
+
+### 2. Arquitectura de Machine Learning Local (Offline & Rápida)
+**Objetivo:** Reducir gasto de tokens en Venice API, acelerar respuestas y permitir lógicas complejas offline.
+*Implementación Técnica:* Utilizar C# ML.NET o ONNX Runtime integrados en el mod.
+- **RAG (Retrieval-Augmented Generation) Local:** Convertiremos las memorias en vectores (Embeddings con un modelo muy ligero como `all-MiniLM`). Al hablar, el sistema local encuentra rápidamente qué "recuerdo" inyectar al prompt de Venice.
+- **Motor de Emoción Instantáneo:** Un micro-modelo NLP evalúa si lo que dijiste es un insulto o halago en milisegundos, alterando la amistad *antes* de que Venice decida la respuesta textual.
+- **Clasificador de Favores:** Un modelo pequeño detecta la intención oculta en la charla (ej. "consígueme madera") y dispara el evento en el código del juego.
+
+### 3. Sistemas de Personalidad, Lore y Dinámicas Sociales
+**Objetivo:** Que ningún NPC se sienta igual a otro.
+- **Perfiles Profundos:** Marnie y Haley no usarán el mismo Prompt. Sus gustos, secretos y profesiones se inyectan en su base.
+- **Red de Rumores Probabilísticos:** Si ocurre un gran evento (te casas con Haley), Emily (su hermana) tiene un 95% de enterarse ese día. Krobus tiene un 0%. Al día siguiente, los NPCs con la información te abordarán sobre el tema.
+- **Multiplicadores Dinámicos:** Sebastian (introvertido) ganará menos puntos de amistad por charla que Sam (extrovertido), requiriendo más constancia para llegar a los 10 corazones.
+- **Moralidad y Precios (Consecuencias):** Tratar mal a todos los aldeanos bajará tu "Moral Global". Esto hará que la probabilidad de que te regalen cosas sea 0, e incluso podemos engancharnos al código de las tiendas para que Pierre te suba los precios un 20%.
+
+### 4. Nuevas Mecánicas de Inmersión Sensorial
+- **Reacciones al Volumen de Voz:** Ya que usamos Whisper localmente, el código puede medir los decibelios. Susurrarle a un NPC lo hace reaccionar diferente a si le gritas.
+- **Curación Contextual y Activa:** El NPC lee tu `Game1.player.health`. Si te ven desmayándote después de la mina, existe la posibilidad de que no solo hablen, sino que el código te inyecte un objeto curativo de temporada directamente a tu inventario.
+- **Retratos Nativos Inteligentes:** El ML deducirá la emoción de la respuesta y el código inyectará comandos nativos de Stardew Valley (como `$h` para sonreír) en el texto. Así, el rostro del NPC cambiará fluidamente en el `DialogueBox` sin tener que crear UI personalizada.
+- **Abandono y Rutinas Emocionales:** Si dejas al NPC hablando solo y te vas, se ofenderá. Si le rompes el corazón, el mod sobrescribirá temporalmente su `Schedule` (rutina) para que ese día se quede encerrado en su cuarto en vez de ir a la taberna.
+- **Sistema de Compañeros Temporal:** Puedes pedirles que te acompañen a la granja. Usaremos rutas temporales, pero si llega su hora de trabajar, abandonarán automáticamente el modo compañero para no romper el juego.
 
 ---
 
-## 🧠 ARQUITECTURA DE IA LOCAL Y MACHINE LEARNING (Ampliación)
-*Para optimizar costos de API, reducir latencia y permitir sistemas complejos, implementaremos pequeños modelos de ML locales (ej. usando **ML.NET** o **ONNX Runtime** en C#).*
-- **Motor de Sentimiento y Moral Local:** Un micro-modelo NLP local evalúa si lo que dijiste es un insulto, un halago o una amenaza en milisegundos. Esto sube/baja la amistad o la "moral global" *sin* necesidad de gastar tokens en Venice API.
-- **Base de Datos Vectorial Local (RAG):** Las memorias se convierten en vectores (Embeddings) usando un modelo pequeño (ej. *all-MiniLM*). Cuando hablas, el sistema local busca rápidamente en tu historial y solo inyecta en el prompt la memoria relevante ("Oh, cierto, ayer me hablaste de las vacas").
-- **Clasificador de Intenciones (Favores):** Un modelo local detecta si tu mensaje contiene una "Petición/Favor" y extrae la entidad (ej. "Madera"). Si lo es, activa la lógica de probabilidades del favor.
-
-## 🎭 NUEVAS IDEAS DE INMERSIÓN PROFUNDA (Brainstorming)
-- **Análisis de Tono de Voz:** Ya que capturamos audio con Whisper, podemos analizar el *volumen* del micrófono. Si el jugador le grita a un NPC, este se asusta o se enoja. Si le susurra en la biblioteca, reacciona diferente.
-- **Conciencia Espacial y Contextual (Curación Activa):** El NPC sabe qué llevas en las manos y cómo está tu Salud/Energía. Si estás muy herido o exhausto, en lugar de solo alarmarse, **tienen una pequeña probabilidad de regalarte un ítem curativo** de temporada (ej. una sopa de chirivía) directo en tu inventario durante la conversación.
-- **Interrupción y Abandono:** Si inicias una conversación y te alejas caminando antes de que el NPC termine de hablar, el NPC se ofenderá ("¡Oye, te estoy hablando!").
-- **Horarios Controlados por Emociones:** Si el jugador hace llorar a Haley, la IA local sobrescribe su horario de SMAPI para que, en lugar de ir a tomar fotos, se quede encerrada en su cuarto o vaya sola al río. El mundo reacciona a su estado mental.
-- **Interacciones Espontáneas (Balanceadas):** Los NPCs pueden llamarte espontáneamente, pero esto debe estar **estrictamente limitado por un cooldown (ej. 1 vez por semana por NPC)** y requerir alta amistad para evitar que el jugador sea acosado constantemente interrumpiendo su gameplay.
-- **Retrato y Emociones Nativas (Integración de UI):** La IA no reemplazará la caja de diálogo original. La respuesta de texto de la IA se inyectará en el `DialogueBox` nativo de Stardew Valley. Además, nuestro ML local o la respuesta de Venice incluirán "tags" invisibles (ej. `[Emocion:Enojado]`) que el código leerá para **cambiar dinámicamente el retrato nativo del NPC** mientras habla (usando los comandos nativos como `$h`, `$a`, etc.), manteniendo la experiencia visual intacta.
-
-## ⏳ MANEJO DEL TIEMPO Y PAUSAS DEL JUEGO (Arquitectura de Latencia)
-*Problema principal:* En Singleplayer, al abrir un `DialogueBox` el juego se pausa temporalmente. Si hablamos, esperamos a que Whisper transcriba (1-2s), y esperamos la respuesta de Venice (3-5s), ¿el juego se queda congelado todo ese tiempo de forma incómoda?
-*Soluciones a implementar:*
-1. **Pausa Selectiva (Overlays No Bloqueantes):** Al presionar el botón de Push-to-Talk, **el juego no se pausa**. El jugador sigue caminando y hablando. Un pequeño icono de "Micrófono" y "Procesando..." aparece en la esquina inferior.
-2. **Buffering y Entrega Asíncrona:** Cuando Venice responde, el texto se guarda en una cola.
-3. **Burbujas de Texto en Tiempo Real (Overhead Bubbles):** Para interacciones dinámicas (como banters espontáneos o respuestas rápidas mientras caminas), **evitaremos abrir la caja de diálogo que pausa el juego**. En su lugar, utilizaremos burbujas de texto flotantes sobre la cabeza del NPC (sistema similar a los `SpeechBubbles` nativos de SMAPI o al mod de multiplayer).
-   - *Gestión de Textos Largos:* Si la IA da una respuesta muy larga, el mod la dividirá inteligentemente en fragmentos pequeños (oraciones) y las mostrará una tras otra en la burbuja cada ciertos segundos (ej. 1 línea cada 3 segundos), permitiendo una experiencia 100% inmersiva en tiempo real sin congelar el mundo.
-4. **Modo Conversación Profunda (Opcional/Lock-in):** Si el jugador quiere tener una conversación larga y estructurada, puede "acercarse e interactuar" (clic derecho) mientras habla, lo que sí abrirá el `DialogueBox` nativo para pausar el mundo y leer con calma. Este sistema híbrido da lo mejor de ambos mundos.
-
----
+***
+**💡 NOTA PARA LA IA EN FUTURAS SESIONES:**
+Soy tu usuario. Revisa continuamente esta sección "Master Design Document" antes de generar código. Me gusta la inmersión, el balance y no romper el gameplay core de Stardew. Antes de diseñar una nueva característica técnica, pregúntame siempre: *"¿Crees que esta forma rompe la inmersión? ¿Se te ocurre una manera más fluida de integrarlo al juego?"*
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 *(Vacío por ahora)*
