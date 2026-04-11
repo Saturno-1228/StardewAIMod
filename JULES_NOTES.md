@@ -72,12 +72,12 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
   - Creación de archivo de proyecto `StardewLivingValley.csproj` configurado para .NET 6.0 y SMAPI.
   - Creación de `ModEntry.cs` con el punto de entrada y logs iniciales.
   - Creación de `ModConfig.cs` y `SecretConfig.cs`.
+  - **Prueba de compilación local exitosa:** Se resolvieron problemas de versión de C# (`LangVersion`) y se confirmó que el `dotnet build` empaqueta el mod en la máquina local exitosamente.
 
 ---
 
 ## 📌 TAREAS PENDIENTES (Siguientes Fases)
-- [x] Compilar el proyecto en local y verificar que carga exitosamente en la consola SMAPI mostrando "Stardew Living Valley loaded". (Resuelto error CS1617 bajando LangVersion a 10 y activando EnableModDeploy).
-- [ ] Fase 1: Implementar el sistema de UI y atajos para Voice-to-Text (Push to Talk).
+- [ ] **Fase 1 (ACTIVA):** Implementar el sistema de UI y atajos para Voice-to-Text (Push to Talk).
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline.
 - [ ] Fase 3: Integrar la comunicación con Venice API y el sistema PromptBuilder.
 - [ ] Fase 4: Implementar sistema de "ConversationHistory" e inyección de memorias diarias.
