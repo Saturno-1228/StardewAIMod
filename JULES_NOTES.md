@@ -121,6 +121,14 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 - **Interacciones Espontáneas (Balanceadas):** Los NPCs pueden llamarte espontáneamente, pero esto debe estar **estrictamente limitado por un cooldown (ej. 1 vez por semana por NPC)** y requerir alta amistad para evitar que el jugador sea acosado constantemente interrumpiendo su gameplay.
 - **Retrato y Emociones Nativas (Integración de UI):** La IA no reemplazará la caja de diálogo original. La respuesta de texto de la IA se inyectará en el `DialogueBox` nativo de Stardew Valley. Además, nuestro ML local o la respuesta de Venice incluirán "tags" invisibles (ej. `[Emocion:Enojado]`) que el código leerá para **cambiar dinámicamente el retrato nativo del NPC** mientras habla (usando los comandos nativos como `$h`, `$a`, etc.), manteniendo la experiencia visual intacta.
 
+## ⏳ MANEJO DEL TIEMPO Y PAUSAS DEL JUEGO (Arquitectura de Latencia)
+*Problema principal:* En Singleplayer, al abrir un `DialogueBox` el juego se pausa temporalmente. Si hablamos, esperamos a que Whisper transcriba (1-2s), y esperamos la respuesta de Venice (3-5s), ¿el juego se queda congelado todo ese tiempo de forma incómoda?
+*Soluciones a implementar:*
+1. **Pausa Selectiva (Overlays No Bloqueantes):** Al presionar el botón de Push-to-Talk, **el juego no se pausa**. El jugador sigue caminando y hablando. Un pequeño icono de "Micrófono" y "Procesando..." aparece en la esquina inferior.
+2. **Buffering y Entrega Asíncrona:** Cuando Venice responde, el texto se guarda en una cola.
+3. **El Enganche (Triggering):** Una vez que la IA tiene la respuesta lista, si el jugador está cerca del NPC, el NPC girará hacia él y forzará la apertura del `DialogueBox` para decir la frase. (Si el jugador ya se alejó mucho, entra la lógica de "Abandono de Conversación").
+4. **La "Charla Activa" (Modo Lock-in):** Una vez que el `DialogueBox` se abre, el tiempo se pausa como en el juego normal para que el jugador lea cómodamente. Desde esa misma caja de diálogo, el jugador puede presionar el botón de Push-to-Talk de nuevo. En ese estado (Menú Abierto), podemos mostrar una animación de "Escribiendo..." o "Pensando..." en la caja mientras la IA procesa la siguiente línea.
+
 ---
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
