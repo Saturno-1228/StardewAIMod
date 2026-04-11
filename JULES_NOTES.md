@@ -115,10 +115,11 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ## 🎭 NUEVAS IDEAS DE INMERSIÓN PROFUNDA (Brainstorming)
 - **Análisis de Tono de Voz:** Ya que capturamos audio con Whisper, podemos analizar el *volumen* del micrófono. Si el jugador le grita a un NPC, este se asusta o se enoja. Si le susurra en la biblioteca, reacciona diferente.
-- **Conciencia Espacial y Contextual:** El NPC sabe exactamente qué tienes en las manos, cómo estás vestido y qué hora es. ("¿Por qué traes una espada a la taberna, [Jugador]?" o "¿Estás sangrando? ¡Ve al hospital!").
+- **Conciencia Espacial y Contextual (Curación Activa):** El NPC sabe qué llevas en las manos y cómo está tu Salud/Energía. Si estás muy herido o exhausto, en lugar de solo alarmarse, **tienen una pequeña probabilidad de regalarte un ítem curativo** de temporada (ej. una sopa de chirivía) directo en tu inventario durante la conversación.
 - **Interrupción y Abandono:** Si inicias una conversación y te alejas caminando antes de que el NPC termine de hablar, el NPC se ofenderá ("¡Oye, te estoy hablando!").
 - **Horarios Controlados por Emociones:** Si el jugador hace llorar a Haley, la IA local sobrescribe su horario de SMAPI para que, en lugar de ir a tomar fotos, se quede encerrada en su cuarto o vaya sola al río. El mundo reacciona a su estado mental.
-- **Interacciones Espontáneas (Banter):** Los NPCs no solo esperan a que tú les hables. Si pasas cerca de ellos y tienen algo qué decirte (basado en un rumor o evento reciente), te llamarán ("¡Eh, acércate, tengo que preguntarte algo!").
+- **Interacciones Espontáneas (Balanceadas):** Los NPCs pueden llamarte espontáneamente, pero esto debe estar **estrictamente limitado por un cooldown (ej. 1 vez por semana por NPC)** y requerir alta amistad para evitar que el jugador sea acosado constantemente interrumpiendo su gameplay.
+- **Retrato y Emociones Nativas (Integración de UI):** La IA no reemplazará la caja de diálogo original. La respuesta de texto de la IA se inyectará en el `DialogueBox` nativo de Stardew Valley. Además, nuestro ML local o la respuesta de Venice incluirán "tags" invisibles (ej. `[Emocion:Enojado]`) que el código leerá para **cambiar dinámicamente el retrato nativo del NPC** mientras habla (usando los comandos nativos como `$h`, `$a`, etc.), manteniendo la experiencia visual intacta.
 
 ---
 
