@@ -1,0 +1,31 @@
+# ==========================================
+# Archivos de Compilación
+# ==========================================
+bin/
+obj/
+*.pdb
+*.exe
+*.dll
+
+# ==========================================
+# IDEs y Herramientas (Visual Studio, VS Code, Rider)
+# ==========================================
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# ==========================================
+# Archivos de Configuración Sensibles y Locales
+# ==========================================
+# (NOTA: Deberás crear tus propios archivos localmente si los necesitas)
+SecretConfig.json
+*secret*.json
+config.json
+
+# ==========================================
+# SMAPI logs locales (por si se prueban cosas localmente)
+# ==========================================
+ErrorLogs/
