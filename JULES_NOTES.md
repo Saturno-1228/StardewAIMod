@@ -92,6 +92,18 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
   - Sus respuestas y actitud evolucionarán orgánicamente según el **nivel de amistad actual con el jugador**.
   - **Red Social Interna:** Los NPCs tendrán conciencia de su nivel de relación y opiniones sobre **otros NPCs** del valle.
   - **Multiplicadores Dinámicos de Amistad:** La progresión social no será plana. Personajes introvertidos o desconfiados tendrán un multiplicador menor (costará más ganar su confianza), mientras que los extrovertidos serán más fáciles de entablar amistad.
+- **Sistema de Chismes y Propagación de Información (Rumores):**
+  - Los eventos no son conocidos por todos mágicamente. Se propagan mediante **probabilidades**. Si sales con Haley, Emily (su hermana) tiene una alta probabilidad diaria de enterarse, pero alguien lejos tiene 0%.
+  - Los NPCs pueden saber solo rumores, y el jugador puede confirmarlos o negarlos.
+- **Sistema de Moralidad y Reputación General:**
+  - El trato del jugador hacia el pueblo tiene consecuencias globales. Ser mala persona reduce regalos, dificulta hacer amigos y puede tener penalizaciones (ej. Pierre subiendo los precios de su tienda).
+- **Sistema de Favores Dinámicos (Misiones Inversas):**
+  - Posibilidad de pedirle a un NPC que consiga un ítem para nosotros.
+  - La probabilidad de éxito depende del nivel de amistad y del *área de expertise* del NPC (ej. pedirle madera a Robin tiene sentido, pedirle un pastel o que vaya a la mina no).
+  - Para no romper el pathfinding, la recompensa llegará mediante **el buzón de correo** al día siguiente con una nota del NPC.
+- **Sistema de Compañeros y Citas (Followers):**
+  - Pedirle a un personaje que pasee contigo o te siga.
+  - *Solución técnica:* Utilizar sobreescritura temporal de `Schedules` (rutinas) de SMAPI para que te sigan, respetando estrictamente sus horas de trabajo irrenunciables para no romper la progresión del juego base.
 
 ---
 
