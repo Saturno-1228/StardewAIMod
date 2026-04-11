@@ -107,5 +107,20 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ---
 
+## 🧠 ARQUITECTURA DE IA LOCAL Y MACHINE LEARNING (Ampliación)
+*Para optimizar costos de API, reducir latencia y permitir sistemas complejos, implementaremos pequeños modelos de ML locales (ej. usando **ML.NET** o **ONNX Runtime** en C#).*
+- **Motor de Sentimiento y Moral Local:** Un micro-modelo NLP local evalúa si lo que dijiste es un insulto, un halago o una amenaza en milisegundos. Esto sube/baja la amistad o la "moral global" *sin* necesidad de gastar tokens en Venice API.
+- **Base de Datos Vectorial Local (RAG):** Las memorias se convierten en vectores (Embeddings) usando un modelo pequeño (ej. *all-MiniLM*). Cuando hablas, el sistema local busca rápidamente en tu historial y solo inyecta en el prompt la memoria relevante ("Oh, cierto, ayer me hablaste de las vacas").
+- **Clasificador de Intenciones (Favores):** Un modelo local detecta si tu mensaje contiene una "Petición/Favor" y extrae la entidad (ej. "Madera"). Si lo es, activa la lógica de probabilidades del favor.
+
+## 🎭 NUEVAS IDEAS DE INMERSIÓN PROFUNDA (Brainstorming)
+- **Análisis de Tono de Voz:** Ya que capturamos audio con Whisper, podemos analizar el *volumen* del micrófono. Si el jugador le grita a un NPC, este se asusta o se enoja. Si le susurra en la biblioteca, reacciona diferente.
+- **Conciencia Espacial y Contextual:** El NPC sabe exactamente qué tienes en las manos, cómo estás vestido y qué hora es. ("¿Por qué traes una espada a la taberna, [Jugador]?" o "¿Estás sangrando? ¡Ve al hospital!").
+- **Interrupción y Abandono:** Si inicias una conversación y te alejas caminando antes de que el NPC termine de hablar, el NPC se ofenderá ("¡Oye, te estoy hablando!").
+- **Horarios Controlados por Emociones:** Si el jugador hace llorar a Haley, la IA local sobrescribe su horario de SMAPI para que, en lugar de ir a tomar fotos, se quede encerrada en su cuarto o vaya sola al río. El mundo reacciona a su estado mental.
+- **Interacciones Espontáneas (Banter):** Los NPCs no solo esperan a que tú les hables. Si pasas cerca de ellos y tienen algo qué decirte (basado en un rumor o evento reciente), te llamarán ("¡Eh, acércate, tengo que preguntarte algo!").
+
+---
+
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 *(Vacío por ahora)*
