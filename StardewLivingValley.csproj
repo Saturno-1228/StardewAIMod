@@ -7,6 +7,9 @@
     <LangVersion>10</LangVersion>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
 
+    <!-- Asegurar que las librerías NuGet (Whisper.net, etc) se copien a la carpeta del mod -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
     <!-- SMAPI configuración -->
     <EnableModZip>true</EnableModZip>
     <EnableModDeploy>true</EnableModDeploy>
