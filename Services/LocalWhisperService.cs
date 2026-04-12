@@ -21,12 +21,6 @@ namespace LivingCompanionsValley.Services
         {
             // Ruta del modelo en la carpeta de assets
             _modelPath = Path.Combine(helper.DirectoryPath, "Assets", "ggml-base.bin");
-
-            // Suscribirse a las excepciones no controladas del AppDomain para registrar crash nativos
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            {
-                ModEntry.Logger?.Log($"[CRASH NATIVO WHISPER] {e.ExceptionObject}", LogLevel.Error);
-            };
         }
 
         /// <summary>
@@ -36,27 +30,18 @@ namespace LivingCompanionsValley.Services
         {
             if (_isInitialized) return;
 
+            if (!File.Exists(_modelPath))
+            {
+                ModEntry.Logger?.Log(
+                    $"[ERROR] Modelo Whisper no encontrado en: {_modelPath}\n" +
+                    "Descarga 'ggml-base.bin' desde https://huggingface.co/sandrohanea/whisper.net/tree/main " +
+                    "y colócalo en la carpeta Assets/ del mod.",
+                    LogLevel.Error);
+                return; // No intentar nada más
+            }
+
             try
             {
-                // Si el modelo no existe, se descarga
-                if (!File.Exists(_modelPath))
-                {
-                    ModEntry.Logger?.Log("El modelo Whisper no se encontró en la carpeta de Assets. Descargando ggml-base.bin (puede tardar un momento)...", LogLevel.Info);
-                    
-                    // Asegurarse de que el directorio exista
-                    string? dir = Path.GetDirectoryName(_modelPath);
-                    if (dir != null && !Directory.Exists(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                    }
-
-                    using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(GgmlType.Base);
-                    using var fileWriter = File.OpenWrite(_modelPath);
-                    await modelStream.CopyToAsync(fileWriter);
-                    
-                    ModEntry.Logger?.Log("Modelo descargado exitosamente.", LogLevel.Info);
-                }
-
                 ModEntry.Logger?.Log("Inicializando modelo de Whisper local (Factory)...", LogLevel.Trace);
                 _factory = WhisperFactory.FromPath(_modelPath);
 
