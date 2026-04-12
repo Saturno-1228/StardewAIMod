@@ -161,3 +161,8 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Se arregló un error donde los NPCs continuaban caminando (rompiendo la interacción) o se quedaban congelados de forma permanente.
 - Para detener a un NPC sin romper su 'schedule' o animaciones especiales (como estar sentado), se verifica si el NPC tiene una animacion especial en curso para omitir `Halt()`. En lugar de manipular la velocidad, se utiliza `movementPause` renovado inteligentemente en `UpdateTicked` solo mientras dura la interaccion, evitando que los pies del NPC se muevan.
 - Se añadió una validación ('Debounce') en el evento del teclado `OnButtonReleased`: si los datos del buffer de audio ocupan menos de `16000 bytes` (aprox. `0.5 segundos` en 16Hz/16bit), la interacción se aborta inmediatamente y el NPC es liberado. Esto previene interacciones fantasma o envíos innecesarios a la IA por presiones accidentales a la tecla rápida.
+
+## 2026-04-12 - Solución a fallas de micrófono silenciosas y congelamiento
+- Se detectó a través de los logs que la IA no respondía porque `Microphone.Default` devolvía nulo (el juego no detectaba micrófono), lo que causaba un salto silencioso del procesamiento. Se añadieron validaciones críticas para abortar la interacción y notificar al usuario (HUD y Consola) si no hay micrófono.
+- Los logs asíncronos de Whisper y Venice se elevaron a `LogLevel.Info` para asegurar visibilidad en la consola predeterminada de SMAPI.
+- Se implementó la solución definitiva para el control de movimiento: usar `npc.freezeMotion = true` (y `false` al terminar). Esto congela completamente al NPC y sus pies sin corromper el Schedule (como lo hace `movementPause`) y sin bugs visuales (como lo hace `speed=0`).
