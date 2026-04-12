@@ -7,39 +7,31 @@
     <LangVersion>10</LangVersion>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     <NoWarn>$(NoWarn);CS9057</NoWarn>
-    
-    <!-- Asegurar que las librerías NuGet (Whisper.net, etc) se copien a la carpeta del mod -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-
-    <!-- SMAPI configuración -->
     <EnableModZip>true</EnableModZip>
     <EnableModDeploy>true</EnableModDeploy>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
+    <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+    <PackageReference Include="System.Text.Json" Version="6.0.0" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
+  </ItemGroup>
 
   <ItemGroup>
-  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    <Link>whisper.dll</Link>
-  </Content>
-</ItemGroup>
+    <!-- Copiar whisper.dll nativo (win-x64) al output para que SMAPI lo despliegue -->
+    <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>whisper.dll</Link>
+    </Content>
+  </ItemGroup>
 
-<Target Name="CleanMacOSArtifacts" AfterTargets="Build">
-  <Delete Files="$(OutputPath)ggml-metal.metal"
-          Condition="Exists('$(OutputPath)ggml-metal.metal')" />
-</Target>
-
-    <!-- Copia whisper.dll al output -->
-    <Copy
-      SourceFiles="@(NativeWin)"
-      DestinationFolder="$(OutputPath)"
-      SkipUnchangedFiles="true"
-      Condition="Exists('@(NativeWin)')" />
-
-    <!-- Elimina ggml-metal.metal si quedó copiado por error -->
-    <Delete Files="$(OutputPath)ggml-metal.metal" Condition="Exists('$(OutputPath)ggml-metal.metal')" />
-
-    <Message Text="✅ whisper.dll nativo (win-x64) copiado correctamente" Importance="high" />
+  <Target Name="CleanMacOSArtifacts" AfterTargets="Build">
+    <Delete Files="$(OutputPath)ggml-metal.metal"
+            Condition="Exists('$(OutputPath)ggml-metal.metal')" />
   </Target>
 
 </Project>
