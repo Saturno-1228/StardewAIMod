@@ -82,7 +82,7 @@ namespace LivingCompanionsValley.Services
 
             try
             {
-                ModEntry.Logger?.Log($"[INFO] Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Info);
+                ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Info);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 
                 // Whisper.net espera los datos en un stream de floats o un array procesado
@@ -94,7 +94,7 @@ namespace LivingCompanionsValley.Services
                 
                 stopwatch.Stop();
                 string finalTrimmedText = resultText.Trim();
-                ModEntry.Logger?.Log($"[INFO] Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
+                ModEntry.Logger?.Log($"Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
 
                 return finalTrimmedText;
             }
