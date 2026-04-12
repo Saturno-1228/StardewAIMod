@@ -141,3 +141,4 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 - **Error CS1617 al compilar (`LangVersion 12`)**: Se solucionó cambiando la versión de C# de `12` a `10` en el `.csproj` ya que el SDK local de .NET 6 no soporta C# 12. Se reactivó la variable de SMAPI `EnableModDeploy` en el archivo de proyecto para asegurar el autodespliegue.
+- **Bug de Inmersión (Fase 1):** Al presionar el PTT (Push-To-Talk), los comandos `npc.Halt()` y `npc.facePlayer()` se ejecutan en código y se imprimen en consola, pero en el juego el NPC no se detiene ni voltea. Probablemente el motor interno de Stardew Valley (`npc.controller`, `npc.Schedule` o la rutina principal) está sobrescribiendo nuestro comando en el mismo tick. Deberá investigarse cómo forzar la interrupción del `PathFindController` o congelar temporalmente su actualización en la próxima sesión.
