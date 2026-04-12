@@ -29,6 +29,14 @@ namespace LivingCompanionsValley
             // Guardar referencia del monitor para ser usada globalmente
             Logger = this.Monitor;
 
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                Logger?.Log($"[CRASH NO CONTROLADO] {e.ExceptionObject}", LogLevel.Error);
+            };
+
+            // ✅ CRÍTICO: cargar whisper.dll nativo ANTES de instanciar cualquier servicio de Whisper
+            PreloadNativeWhisper(helper);
+
             // Cargar configuración pública
             _config = helper.ReadConfig<ModConfig>();
 
@@ -60,6 +68,21 @@ namespace LivingCompanionsValley
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
             // Espacio preparado para futuras fases.
+        }
+
+        private void PreloadNativeWhisper(IModHelper helper)
+        {
+            var nativePath = System.IO.Path.Combine(helper.DirectoryPath, "whisper.dll");
+            if (System.IO.File.Exists(nativePath))
+            {
+                System.Runtime.InteropServices.NativeLibrary.Load(nativePath);
+                Logger?.Log($"[Whisper] Native DLL cargada: {nativePath}", LogLevel.Info);
+            }
+            else
+            {
+                Logger?.Log($"[ERROR] whisper.dll no encontrada en: {nativePath}", LogLevel.Error);
+                Logger?.Log("[ERROR] El mod no funcionará sin el runtime nativo de Whisper.", LogLevel.Error);
+            }
         }
     }
 }
