@@ -135,10 +135,9 @@ namespace LivingCompanionsValley.Services
                         ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Debug);
                     }
                     
-                    // Usar movementPause para detener el movimiento en lugar de modificar la velocidad.
-                    // Esto detiene los pies. Un valor masivo asegura que nunca expire prematuramente
-                    // evitando el congelamiento permanente por renovarlo en UpdateTicked.
-                    _targetNpc.movementPause = 100000;
+                    // Congelar al NPC usando la propiedad nativa del motor (detiene los pies y el movimiento)
+                    // sin corromper el horario como lo hace movementPause, ni fallar visualmente como speed.
+                    _targetNpc.freezeMotion = true;
                     
                     // Iniciar grabación de audio
                     if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
@@ -323,8 +322,8 @@ namespace LivingCompanionsValley.Services
 
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
             
-            // Permitimos que el juego recupere el control del movimiento (sus pies volverán a moverse cuando camine)
-            _targetNpc.movementPause = 0;
+            // Liberamos el congelamiento nativo para que el NPC retome su ruta y animaciones
+            _targetNpc.freezeMotion = false;
 
             // Limpiamos referencias
             _isInteractionActive = false;
@@ -393,9 +392,7 @@ namespace LivingCompanionsValley.Services
                     }
                 }
 
-                // Se eliminó la renovación constante de movementPause para evitar el congelamiento
-                // permanente del NPC tras finalizar la interacción. Su valor de 100,000 inicial
-                // es suficiente para mantenerlo quieto sin romper su motor.
+                // Se utiliza freezeMotion en lugar de movementPause, deteniendo perfectamente al NPC y sus animaciones (pies) sin corromper el motor de Stardew.
             }
         }
     }
