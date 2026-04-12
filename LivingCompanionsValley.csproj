@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
-    <PackageReference Include="Whisper.net" Version="1.9.0" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
+    <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
     <!-- Forzar versiones .NET 6.0 para evitar conflictos de Assembly con SMAPI en SDKs modernos (ej. .NET 10) -->
     <PackageReference Include="System.Text.Json" Version="6.0.0" />
     <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
