@@ -58,77 +58,43 @@ namespace LivingCompanionsValley.Services
         /// Transcribe un buffer de audio de 32-bit floats a texto.
         /// </summary>
         [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
-        public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
+        public async Task InitializeAsync()
+{
+    if (_isInitialized) return;
+
+    try
+    {
+        if (!File.Exists(_modelPath))
         {
-            if (!_isInitialized || _factory == null)
-            {
-                ModEntry.Logger?.Log("[Error] Whisper no está inicializado al intentar transcribir.", LogLevel.Error);
-                return "[Error] Whisper no está inicializado.";
-            }
+            ModEntry.Logger?.Log(
+                "Modelo Whisper no encontrado. Descargando ggml-base.bin (~142 MB)... " +
+                "Esto solo ocurre una vez.", LogLevel.Info);
 
-            // Timeout de 15 segundos para evitar que Whisper se quede colgado
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+            StardewValley.Game1.addHUDMessage(new StardewValley.HUDMessage(
+                "Living Companions: Descargando modelo de voz (~142 MB)...", 2));
 
-            try
-            {
-                ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Info);
-                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                
-                // Forzar ejecución en ThreadPool, fuera del hilo de MonoGame
-                string finalTrimmedText = await Task.Run(async () =>
-                {
-                    ModEntry.Logger?.Log("Creando processor efímero de Whisper.net...", LogLevel.Trace);
+            string? dir = Path.GetDirectoryName(_modelPath);
+            if (dir != null && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
 
-                    // El processor maneja estado interno nativo y NO es thread-safe ni reusable.
-                    // Se debe instanciar por cada proceso y desechar usando async IDisposable (await using).
-                    await using var processor = _factory.CreateBuilder()
-                        .WithLanguage("es")
-                        .WithNoContext() // Evitar corromper memoria con contexto pasado
-                        .Build();
+            using var modelStream = await WhisperGgmlDownloader.Default
+                .GetGgmlModelAsync(GgmlType.Base);
+            using var fileWriter = File.OpenWrite(_modelPath);
+            await modelStream.CopyToAsync(fileWriter);
 
-                    var sb = new System.Text.StringBuilder();
+            ModEntry.Logger?.Log("Modelo descargado correctamente.", LogLevel.Info);
 
-                    ModEntry.Logger?.Log("Iniciando ProcessAsync con Whisper.net...", LogLevel.Trace);
-
-                    await foreach (var segment in processor.ProcessAsync(floatAudioBuffer, cts.Token))
-                    {
-                        sb.Append(segment.Text);
-                        ModEntry.Logger?.Log($"Segmento transcrito detectado: '{segment.Text}'", LogLevel.Trace);
-                    }
-
-                    return sb.ToString().Trim();
-                }, cts.Token).ConfigureAwait(false);
-                
-                stopwatch.Stop();
-                ModEntry.Logger?.Log($"Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
-
-                return finalTrimmedText;
-            }
-            catch (OperationCanceledException)
-            {
-                ModEntry.Logger?.Log("[Error] Tiempo de espera agotado (15s) al transcribir con Whisper. Posible cuelgue del modelo.", LogLevel.Error);
-                return "[Error] Tiempo de espera agotado al transcribir.";
-            }
-            catch (AccessViolationException ex)
-            {
-                ModEntry.Logger?.Log($"[CRASH NATIVO] AccessViolation en Whisper: {ex}", LogLevel.Error);
-                return "[Error] Crash de memoria al transcribir.";
-            }
-            catch (System.Runtime.InteropServices.SEHException ex)
-            {
-                ModEntry.Logger?.Log($"[CRASH NATIVO] SEHException en Whisper: {ex}", LogLevel.Error);
-                return "[Error] Fallo interno del motor Whisper.";
-            }
-            catch (Exception ex)
-            {
-                ModEntry.Logger?.Log($"Error al transcribir el audio con Whisper: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
-                return "[Error] Excepción en transcripción de Whisper.";
-            }
+            StardewValley.Game1.addHUDMessage(new StardewValley.HUDMessage(
+                "Living Companions: Modelo de voz listo.", 1));
         }
 
-        public void Dispose()
-        {
-            _factory?.Dispose();
-        }
+        ModEntry.Logger?.Log("Inicializando Whisper...", LogLevel.Trace);
+        _factory = WhisperFactory.FromPath(_modelPath);
+        _isInitialized = true;
+        ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Trace);
+    }
+    catch (Exception ex)
+    {
+        ModEntry.Logger?.Log($"Error al inicializar Whisper: {ex.Message}", LogLevel.Error);
     }
 }

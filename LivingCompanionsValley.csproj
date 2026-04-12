@@ -18,20 +18,16 @@
 
 
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
-    <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
-    <!-- Forzar versiones .NET 6.0 para evitar conflictos de Assembly con SMAPI en SDKs modernos (ej. .NET 10) -->
-    <PackageReference Include="System.Text.Json" Version="6.0.0" />
-    <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
-  </ItemGroup>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>whisper.dll</Link>
+  </Content>
+</ItemGroup>
 
-  <Target Name="CopyNativeWhisper" AfterTargets="Build">
-    <ItemGroup>
-      <!-- Windows x64 - el único que necesitas -->
-      <NativeWin Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\runtimes\win-x64\native\whisper.dll" />
-    </ItemGroup>
+<Target Name="CleanMacOSArtifacts" AfterTargets="Build">
+  <Delete Files="$(OutputPath)ggml-metal.metal"
+          Condition="Exists('$(OutputPath)ggml-metal.metal')" />
+</Target>
 
     <!-- Copia whisper.dll al output -->
     <Copy
