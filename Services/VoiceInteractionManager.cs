@@ -12,11 +12,11 @@ namespace LivingCompanionsValley.Services
     /// Gestiona las interacciones de voz del jugador, interceptando la tecla configurada (Push-to-Talk)
     /// y localizando a los NPCs cercanos válidos para conversar.
     /// </summary>
-    using Microsoft.Xna.Framework.Audio;
+    using NAudio.Wave;
     using System.Threading.Tasks;
     using System.Collections.Concurrent;
 
-    public class VoiceInteractionManager
+    public class VoiceInteractionManager : IDisposable
     {
         private readonly IModHelper _helper;
         private readonly ModConfig _config;
@@ -28,9 +28,8 @@ namespace LivingCompanionsValley.Services
         private bool _isRecordingVoice;
         private double _lastInteractionTime;
 
-        // Microphone state
-        private Microphone? _microphone;
-        private byte[]? _audioBuffer;
+        // Microphone state using NAudio
+        private WaveInEvent? _waveIn;
         private MemoryStream? _audioMemoryStream;
         private readonly ConcurrentQueue<Action> _mainThreadActions = new ConcurrentQueue<Action>();
 
@@ -67,19 +66,26 @@ namespace LivingCompanionsValley.Services
             // Inicializar Whisper.net en background
             Task.Run(async () => await _whisperService.InitializeAsync());
 
-            // Inicializar Micrófono
+            // Inicializar Micrófono con NAudio
             try
             {
-                if (Microphone.Default != null)
+                if (WaveInEvent.DeviceCount > 0)
                 {
-                    _microphone = Microphone.Default;
-                    _microphone.BufferDuration = TimeSpan.FromMilliseconds(100);
-                    _audioBuffer = new byte[_microphone.GetSampleSizeInBytes(_microphone.BufferDuration)];
+                    _waveIn = new WaveInEvent
+                    {
+                        DeviceNumber = 0, // Default device
+                        WaveFormat = new WaveFormat(16000, 1) // 16kHz, mono
+                    };
+                    _waveIn.DataAvailable += OnDataAvailable;
+                }
+                else
+                {
+                    ModEntry.Logger?.Log("No se encontraron dispositivos de grabación de audio (NAudio).", LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"No se pudo inicializar el micrófono: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"No se pudo inicializar el micrófono con NAudio: {ex.Message}", LogLevel.Error);
             }
 
             // Suscribirse a los eventos
@@ -114,7 +120,7 @@ namespace LivingCompanionsValley.Services
                     }
 
                     // Validación crucial: Si el micrófono falló al inicializarse, no podemos continuar.
-                    if (_microphone == null)
+                    if (_waveIn == null)
                     {
                         ModEntry.Logger?.Log("ERROR CRÍTICO: Intento de grabar voz fallido. El micrófono no está disponible. Interacción abortada.", LogLevel.Error);
                         Game1.addHUDMessage(new HUDMessage("Error: Micrófono no detectado", HUDMessage.error_type));
@@ -149,16 +155,33 @@ namespace LivingCompanionsValley.Services
                     _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(true);
                     
                     // Iniciar grabación de audio
-                    if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
+                    if (_waveIn != null && !_isRecordingVoice)
                     {
                         _audioMemoryStream = new MemoryStream();
-                        _microphone.Start();
+                        try
+                        {
+                            _waveIn.StartRecording();
+                        }
+                        catch (Exception ex)
+                        {
+                            ModEntry.Logger?.Log($"Error al iniciar grabación: {ex.Message}", LogLevel.Error);
+                            ReleaseTargetNpc("Error al grabar");
+                            return;
+                        }
                     }
                 }
                 else
                 {
                     ModEntry.Logger?.Log("No se encontró ningún NPC válido cerca.", LogLevel.Debug);
                 }
+            }
+        }
+
+        private void OnDataAvailable(object? sender, WaveInEventArgs e)
+        {
+            if (_isRecordingVoice && _audioMemoryStream != null)
+            {
+                _audioMemoryStream.Write(e.Buffer, 0, e.BytesRecorded);
             }
         }
 
@@ -227,9 +250,16 @@ namespace LivingCompanionsValley.Services
                 _lastInteractionTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
 
                 // Detener el micrófono y procesar el audio
-                if (_microphone != null && _microphone.State == MicrophoneState.Started)
+                if (_waveIn != null)
                 {
-                    _microphone.Stop();
+                    try
+                    {
+                        _waveIn.StopRecording();
+                    }
+                    catch (Exception ex)
+                    {
+                        ModEntry.Logger?.Log($"Error al detener grabación: {ex.Message}", LogLevel.Error);
+                    }
 
                     if (_audioMemoryStream != null && _targetNpc != null)
                     {
@@ -350,20 +380,6 @@ namespace LivingCompanionsValley.Services
                 action?.Invoke();
             }
 
-            // Capturar datos de audio si estamos grabando
-            if (_microphone != null && _microphone.State == MicrophoneState.Started && _audioMemoryStream != null)
-            {
-                int sampleSize = _microphone.GetSampleSizeInBytes(_microphone.BufferDuration);
-                if (_audioBuffer == null || _audioBuffer.Length < sampleSize)
-                    _audioBuffer = new byte[sampleSize];
-                    
-                int bytesRead = _microphone.GetData(_audioBuffer);
-                if (bytesRead > 0)
-                {
-                    _audioMemoryStream.Write(_audioBuffer, 0, bytesRead);
-                }
-            }
-
             if (!Context.IsWorldReady || Game1.player == null)
                 return;
 
@@ -402,6 +418,22 @@ namespace LivingCompanionsValley.Services
                 }
 
                 // Se utiliza freezeMotion en lugar de movementPause, deteniendo perfectamente al NPC y sus animaciones (pies) sin corromper el motor de Stardew.
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_waveIn != null)
+            {
+                _waveIn.DataAvailable -= OnDataAvailable;
+                _waveIn.Dispose();
+                _waveIn = null;
+            }
+
+            if (_audioMemoryStream != null)
+            {
+                _audioMemoryStream.Dispose();
+                _audioMemoryStream = null;
             }
         }
     }
