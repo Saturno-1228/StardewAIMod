@@ -12,15 +12,27 @@ namespace StardewLivingValley.Services
     /// Gestiona las interacciones de voz del jugador, interceptando la tecla configurada (Push-to-Talk)
     /// y localizando a los NPCs cercanos válidos para conversar.
     /// </summary>
+    using Microsoft.Xna.Framework.Audio;
+    using System.Threading.Tasks;
+    using System.Collections.Concurrent;
+
     public class VoiceInteractionManager
     {
         private readonly IModHelper _helper;
         private readonly ModConfig _config;
+        private readonly VeniceApiService _veniceApiService;
+        private readonly LocalWhisperService _whisperService;
 
         private NPC? _targetNpc;
         private bool _isInteractionActive;
         private bool _isRecordingVoice;
         private double _lastInteractionTime;
+
+        // Microphone state
+        private Microphone? _microphone;
+        private byte[]? _audioBuffer;
+        private MemoryStream? _audioMemoryStream;
+        private readonly ConcurrentQueue<Action> _mainThreadActions = new ConcurrentQueue<Action>();
 
         /// <summary>
         /// Lista de NPCs que nunca deben ser contactados mediante el mod de IA.
@@ -44,12 +56,33 @@ namespace StardewLivingValley.Services
         /// </summary>
         /// <param name="helper">Helper de SMAPI para acceder a eventos y utilidades.</param>
         /// <param name="config">Configuración actual del mod para obtener la tecla de voz.</param>
-        public VoiceInteractionManager(IModHelper helper, ModConfig config)
+        /// <param name="veniceApiService">Servicio de la API de Venice.</param>
+        public VoiceInteractionManager(IModHelper helper, ModConfig config, VeniceApiService veniceApiService)
         {
             _helper = helper;
             _config = config;
+            _veniceApiService = veniceApiService;
+            _whisperService = new LocalWhisperService(helper);
 
-            // Suscribirse a los eventos de presión y liberación de botones
+            // Inicializar Whisper.net en background
+            Task.Run(async () => await _whisperService.InitializeAsync());
+
+            // Inicializar Micrófono
+            try
+            {
+                if (Microphone.Default != null)
+                {
+                    _microphone = Microphone.Default;
+                    _microphone.BufferDuration = TimeSpan.FromMilliseconds(100);
+                    _audioBuffer = new byte[_microphone.GetSampleSizeInBytes(_microphone.BufferDuration)];
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"No se pudo inicializar el micrófono: {ex.Message}", LogLevel.Error);
+            }
+
+            // Suscribirse a los eventos
             _helper.Events.Input.ButtonPressed += OnButtonPressed;
             _helper.Events.Input.ButtonReleased += OnButtonReleased;
             _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
@@ -93,6 +126,13 @@ namespace StardewLivingValley.Services
                     // Aplicar una pausa inicial. No la renovaremos en UpdateTicked para evitar
                     // conflictos con el motor de rutas nativo.
                     _targetNpc.movementPause = 5000;
+                    
+                    // Iniciar grabación de audio
+                    if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
+                    {
+                        _audioMemoryStream = new MemoryStream();
+                        _microphone.Start();
+                    }
                 }
                 else
                 {
@@ -164,7 +204,87 @@ namespace StardewLivingValley.Services
                 
                 // Registramos el momento exacto en que soltamos el botón para el temporizador de inactividad
                 _lastInteractionTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
+
+                // Detener el micrófono y procesar el audio
+                if (_microphone != null && _microphone.State == MicrophoneState.Started)
+                {
+                    _microphone.Stop();
+
+                    if (_audioMemoryStream != null && _targetNpc != null)
+                    {
+                        byte[] finalAudioData = _audioMemoryStream.ToArray();
+                        _audioMemoryStream.Dispose();
+                        _audioMemoryStream = null;
+
+                        // Lanzar el procesamiento en background
+                        string npcName = _targetNpc.Name;
+                        Task.Run(() => ProcessAudioAndGetResponseAsync(npcName, finalAudioData));
+                    }
+                }
             }
+        }
+
+        private async Task ProcessAudioAndGetResponseAsync(string npcName, byte[] audioData)
+        {
+            try
+            {
+                // Convertir PCM 16-bit a Float 32-bit (16kHz asumido)
+                float[] floatAudio = ConvertPcm16ToFloat(audioData);
+
+                // 1. Transcribir audio
+                string transcription = await _whisperService.TranscribeAudioAsync(floatAudio);
+
+                if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
+                {
+                    ShowBubble(npcName, "...");
+                    return;
+                }
+
+                ModEntry.Logger?.Log($"Usuario dijo: {transcription}", LogLevel.Debug);
+
+                // 2. Obtener respuesta de Venice
+                string npcResponse = await _veniceApiService.GetNpcResponseAsync(npcName, transcription);
+
+                ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Debug);
+
+                // 3. Mostrar la respuesta en la UI principal
+                ShowBubble(npcName, npcResponse);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"Error al procesar la interacción: {ex.Message}", LogLevel.Error);
+                ShowBubble(npcName, "Lo siento, me he distraído...");
+            }
+        }
+
+        private void ShowBubble(string npcName, string text)
+        {
+            _mainThreadActions.Enqueue(() =>
+            {
+                // Asegurarse de que el NPC sigue existiendo
+                foreach (var character in Game1.currentLocation.characters)
+                {
+                    if (character.Name == npcName)
+                    {
+                        character.showTextAboveHead(text);
+                        // Refrescar el movement pause para darle tiempo de mostrar el texto sin huir
+                        character.movementPause = Math.Max(character.movementPause, 3000);
+                        break;
+                    }
+                }
+            });
+        }
+
+        private float[] ConvertPcm16ToFloat(byte[] pcmData)
+        {
+            int numSamples = pcmData.Length / 2;
+            float[] floatData = new float[numSamples];
+            for (int i = 0; i < numSamples; i++)
+            {
+                short sample = BitConverter.ToInt16(pcmData, i * 2);
+                floatData[i] = sample / 32768f;
+            }
+            return floatData;
         }
 
         /// <summary>
@@ -189,6 +309,26 @@ namespace StardewLivingValley.Services
         /// </summary>
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
         {
+            // Procesar acciones de la UI programadas desde hilos en background
+            while (_mainThreadActions.TryDequeue(out var action))
+            {
+                action?.Invoke();
+            }
+
+            // Capturar datos de audio si estamos grabando
+            if (_microphone != null && _microphone.State == MicrophoneState.Started && _audioMemoryStream != null)
+            {
+                int sampleSize = _microphone.GetSampleSizeInBytes(_microphone.BufferDuration);
+                if (_audioBuffer == null || _audioBuffer.Length < sampleSize)
+                    _audioBuffer = new byte[sampleSize];
+                    
+                int bytesRead = _microphone.GetData(_audioBuffer);
+                if (bytesRead > 0)
+                {
+                    _audioMemoryStream.Write(_audioBuffer, 0, bytesRead);
+                }
+            }
+
             if (!Context.IsWorldReady || Game1.player == null)
                 return;
 
