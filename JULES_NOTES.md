@@ -173,3 +173,5 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
   - Leer/Escribir campos: `_helper.Reflection.GetField<Tipo>(objeto, "nombreVariable").SetValue(valor);`
   - Llamar métodos: `_helper.Reflection.GetMethod(objeto, "nombreMetodo").Invoke(parametros);`
 - [X] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real). Se reemplazó el uso de `Microsoft.Xna.Framework.Audio.Microphone` por `NAudio` y su clase `WaveInEvent` para que funcionase en sistemas con Windows como se requería.
+- Arreglado bug lógico en `VoiceInteractionManager.cs` que impedía que NAudio comenzara la captura del micrófono debido a un cambio de estado anticipado de `_isRecordingVoice`.
+- Añadidos logs de diagnóstico adicionales para rastrear correctamente el ciclo de vida de la grabación de voz y detectar posibles problemas con nulos o capturas vacías.
