@@ -76,23 +76,31 @@ namespace LivingCompanionsValley.Services
         {
             if (!_isInitialized || _processor == null)
             {
+                ModEntry.Logger?.Log("[Error] Whisper no está inicializado al intentar transcribir.", LogLevel.Error);
                 return "[Error] Whisper no está inicializado.";
             }
 
             try
             {
+                ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Trace);
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                
                 // Whisper.net espera los datos en un stream de floats o un array procesado
                 string resultText = "";
                 await foreach (var result in _processor.ProcessAsync(floatAudioBuffer))
                 {
                     resultText += result.Text;
                 }
+                
+                stopwatch.Stop();
+                string finalTrimmedText = resultText.Trim();
+                ModEntry.Logger?.Log($"Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Trace);
 
-                return resultText.Trim();
+                return finalTrimmedText;
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error al transcribir el audio: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error al transcribir el audio con Whisper: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
                 return "[Error] Excepción en transcripción de Whisper.";
             }
         }
