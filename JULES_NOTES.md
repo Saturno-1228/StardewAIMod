@@ -172,3 +172,4 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - **Lección/Solución Futura:** Siempre que haya problemas con protecciones de variables o métodos internos del juego, **NUNCA** intentar modificar la librería directamente. En su lugar, utilizar el sistema de Reflection integrado en SMAPI:
   - Leer/Escribir campos: `_helper.Reflection.GetField<Tipo>(objeto, "nombreVariable").SetValue(valor);`
   - Llamar métodos: `_helper.Reflection.GetMethod(objeto, "nombreMetodo").Invoke(parametros);`
+- [X] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real). Se reemplazó el uso de `Microsoft.Xna.Framework.Audio.Microphone` por `NAudio` y su clase `WaveInEvent` para que funcionase en sistemas con Windows como se requería.
