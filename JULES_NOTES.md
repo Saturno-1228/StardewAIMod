@@ -78,6 +78,14 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ## 📌 TAREAS PENDIENTES (Siguientes Fases)
 
+## 🎮 CAPACIDADES ACTUALES DEL MOD (Versión Actual)
+Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente lo que hace:
+1. **Atajo Configurable:** Monitorea la tecla `Tab` de tu teclado (o la que definas en el config.json generado al abrir el juego por primera vez).
+2. **Push-To-Talk "Simulado":** Al mantener presionada la tecla, registra en la consola de SMAPI (modo Debug) un mensaje de inicio de captura de voz. Al soltarla, registra el fin.
+3. **Escaneo de Entorno:** Cuando presionas la tecla, busca instantáneamente en un radio de 3 baldosas ("tiles") a tu alrededor.
+4. **Filtro Inteligente:** Ignora animales, monstruos, mascotas, NPCs no descubiertos, y personajes especiales protegidos por historia (como el Bouncer del Casino o Mr. Qi).
+5. **Inmersión Básica (Halt & Face):** Si encuentra un NPC válido (ej. Marnie), interrumpe su caminata o rutina (`Halt()`) y hace que se dé la vuelta para mirarte directamente a los ojos mientras "hablas".
+
 ### ✅ Fase 1: Sistema de Atajos y Preparación Voice-to-Text (Push to Talk)
 - **Estado:** COMPLETADO
 - **Acciones Realizadas:**
