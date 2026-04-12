@@ -152,3 +152,7 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 ## 2026-04-12 - Solución de Conflicto de Versión de Assembly en .NET 10
 - Cuando se compilaba el mod con el SDK más reciente de .NET (por ejemplo, `10.0.0.0`), SMAPI (que corre en .NET 6.0) rechazaba cargar el mod por un `FileLoadException: Could not load file or assembly 'System.Text.Encodings.Web, Version=10.0.0.0'`.
 - Se añadieron dependencias explícitas en `LivingCompanionsValley.csproj` para forzar las versiones `6.0.0` de `System.Text.Json` y `System.Text.Encodings.Web`, asegurando compatibilidad nativa con Stardew Valley y SMAPI.
+
+## 2026-04-12 - Solución de Conflicto de Versión NU1605 con System.Text.Json
+- Después de forzar la versión `6.0.0` de `System.Text.Json` para compatibilidad con SMAPI, el compilador arrojó el error `NU1605 (Package downgrade)` porque `Whisper.net v1.9.0` introdujo una nueva dependencia transitiva (`Microsoft.Extensions.AI.Abstractions v10.0.0`) que exige obligatoriamente `System.Text.Json >= 10.0.0`.
+- Para resolver este choque arquitectónico sin romper SMAPI, se bajó la versión de `Whisper.net` y `Whisper.net.Runtime` de la `1.9.0` a la `1.8.1`, la cual no tiene esta dependencia transitiva de .NET 10 y es perfectamente compatible con `.NET 6.0` nativo.
