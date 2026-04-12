@@ -92,9 +92,9 @@ Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente
   - [x] **1.1 Arquitectura:** Se creó la clase `VoiceInteractionManager.cs` en la carpeta `Services/`.
   - [x] **1.2 Captura de Eventos Básica:** Se conectaron los eventos de SMAPI (`ButtonPressed` y `ButtonReleased`) para escuchar `VoiceKey` (SButton.Tab por defecto configurable en `ModConfig`).
   - [x] **1.3 Mock de Grabación (Logs):** Se implementaron mensajes "Iniciando captura de voz..." y "Captura finalizada." con `LogLevel.Debug`.
-  - [x] **1.4 Filtro y Búsqueda de NPC:** Se añadió la búsqueda en un radio de 3 tiles. Se implementó una cuádruple validación: Es aldeano, puede socializar, el jugador ya lo conoció, y **NO** está en una `NpcBlacklist` explícita (para proteger mecánicas con NPCs de historia o decorativos).
-  - [x] **1.5 Halt & Face Mejorado (Push-To-Talk y Pausa de Rutina):** Se arregló el bug donde el NPC ignoraba el `.Halt()` debido a su "Schedule" interno. Ahora, al presionar TAB, el NPC obtiene un `movementPause = 5000` (renovado 2 veces por segundo en `UpdateTicked`).
-  - [x] **1.6 Condición de Distancia para Liberar:** Al soltar TAB el NPC se queda "esperando". Solo retoma su rutina si el jugador se aleja a más de 6 tiles de distancia, dándole tiempo a la futura IA de procesar la respuesta sin que el NPC dé la espalda.
+  - [x] **1.4 Filtro y Búsqueda de NPC:** Se añadió la búsqueda en un radio de 3 tiles. Validación nativa: Es aldeano, puede socializar, y **NO** está en una `NpcBlacklist` explícita (Se removió la necesidad de haber hablado con él primero con el clic derecho).
+  - [x] **1.5 Halt & Face Nativo (Push-To-Talk y Pausa de Rutina):** Se corrigió la lógica de "congelamiento". Ahora, al presionar TAB, se llama a `npc.Halt()` y se aplica un único `movementPause` para que el motor de rutinas no se buggee, eliminando el refresco constante que los dejaba paralizados.
+  - [x] **1.6 Condición de Salida y Liberación Limpia:** Al expirar los 15 segundos o alejarse 6 tiles, se llama al método `ReleaseTargetNpc`, que aplica una pequeña pausa y ejecuta `ClearDirectedAnimation()` para garantizar que el NPC retome su horario con normalidad.
 
 ### ⏳ Fases Futuras
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real del `Microphone`).
