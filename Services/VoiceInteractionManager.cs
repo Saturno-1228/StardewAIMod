@@ -1,0 +1,147 @@
+using System;
+using StardewModdingAPI;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using StardewModdingAPI.Events;
+using StardewValley;
+using StardewLivingValley.Configuration;
+
+namespace StardewLivingValley.Services
+{
+    /// <summary>
+    /// Gestiona las interacciones de voz del jugador, interceptando la tecla configurada (Push-to-Talk)
+    /// y localizando a los NPCs cercanos válidos para conversar.
+    /// </summary>
+    public class VoiceInteractionManager
+    {
+        private readonly IModHelper _helper;
+        private readonly ModConfig _config;
+
+        /// <summary>
+        /// Lista de NPCs que nunca deben ser contactados mediante el mod de IA.
+        /// </summary>
+        private readonly HashSet<string> _npcBlacklist = new HashSet<string>
+        {
+            "Bouncer",
+            "Mister Qi",
+            "Grandpa",
+            "Henchman",
+            "Gunther",
+            "Marlon",
+            "Birdie",
+            "Professor Snail",
+            "Welwick",
+            "Leo" // Leo temporalmente, a veces requiere lógica específica antes de mudarse
+        };
+
+        /// <summary>
+        /// Inicializa una nueva instancia del VoiceInteractionManager.
+        /// </summary>
+        /// <param name="helper">Helper de SMAPI para acceder a eventos y utilidades.</param>
+        /// <param name="config">Configuración actual del mod para obtener la tecla de voz.</param>
+        public VoiceInteractionManager(IModHelper helper, ModConfig config)
+        {
+            _helper = helper;
+            _config = config;
+
+            // Suscribirse a los eventos de presión y liberación de botones
+            _helper.Events.Input.ButtonPressed += OnButtonPressed;
+            _helper.Events.Input.ButtonReleased += OnButtonReleased;
+        }
+
+        /// <summary>
+        /// Evento disparado cuando el jugador presiona cualquier botón.
+        /// Verifica si es la tecla de voz configurada y comienza el flujo.
+        /// </summary>
+        private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+        {
+            // Evitar procesar si no hay partida cargada o si el jugador no puede actuar
+            if (!Context.IsWorldReady || !Context.CanPlayerMove)
+                return;
+
+            // Solo actuar si el botón presionado coincide con el configurado
+            if (e.Button == _config.VoiceKey)
+            {
+                ModEntry.Logger?.Log("Iniciando captura de voz...", LogLevel.Debug);
+
+                NPC? nearestNpc = GetNearestValidNpc(3f);
+
+                if (nearestNpc != null)
+                {
+                    ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Deteniendo e interactuando...", LogLevel.Debug);
+
+                    // Detener al NPC de su ruta actual y hacer que mire al jugador
+                    nearestNpc.Halt();
+                    nearestNpc.facePlayer(Game1.player);
+                }
+                else
+                {
+                    ModEntry.Logger?.Log("No se encontró ningún NPC válido cerca.", LogLevel.Debug);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Busca al NPC interactuable más cercano en el radio especificado.
+        /// </summary>
+        /// <param name="radiusTiles">Radio de búsqueda en tiles.</param>
+        /// <returns>El NPC más cercano y válido, o null si no se encuentra ninguno.</returns>
+        private NPC? GetNearestValidNpc(float radiusTiles)
+        {
+            NPC? closestNpc = null;
+            float closestDistance = float.MaxValue;
+            Vector2 playerTile = Game1.player.Tile;
+
+            foreach (var character in Game1.currentLocation.characters)
+            {
+                if (character == null) continue;
+
+                float distance = Vector2.Distance(playerTile, character.Tile);
+
+                if (distance <= radiusTiles)
+                {
+                    if (IsValidNpc(character) && distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        closestNpc = character;
+                    }
+                }
+            }
+
+            return closestNpc;
+        }
+
+        /// <summary>
+        /// Verifica las 4 reglas estipuladas para que un NPC sea válido para interactuar.
+        /// </summary>
+        private bool IsValidNpc(NPC npc)
+        {
+            // 1. Debe ser un aldeano real (ignorando monstruos, animales, etc.)
+            if (!npc.IsVillager) return false;
+
+            // 2. Debe poder socializar actualmente
+            if (!npc.CanSocialize) return false;
+
+            // 3. No debe estar en la lista negra
+            if (_npcBlacklist.Contains(npc.Name)) return false;
+
+            // 4. El jugador ya debe haberlo conocido (estar en los datos de amistad)
+            if (Game1.player.friendshipData == null || !Game1.player.friendshipData.ContainsKey(npc.Name)) return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Evento disparado cuando el jugador suelta cualquier botón.
+        /// Verifica si es la tecla de voz configurada y finaliza el flujo.
+        /// </summary>
+        private void OnButtonReleased(object? sender, ButtonReleasedEventArgs e)
+        {
+            // Solo actuar si el botón soltado coincide con el configurado
+            if (e.Button == _config.VoiceKey)
+            {
+                ModEntry.Logger?.Log("Captura finalizada.", LogLevel.Debug);
+            }
+        }
+    }
+}

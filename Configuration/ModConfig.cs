@@ -1,3 +1,5 @@
+using StardewModdingAPI;
+
 namespace StardewLivingValley.Configuration
 {
     /// <summary>
@@ -6,9 +8,15 @@ namespace StardewLivingValley.Configuration
     /// </summary>
     public class ModConfig
     {
-        // TODO: Agregar configuraciones como atajos de teclado para el micrófono, etc.
+        /// <summary>
+        /// Tecla utilizada para iniciar la captura de voz (Push-To-Talk).
+        /// </summary>
+        public SButton VoiceKey { get; set; }
+
         public ModConfig()
         {
+            // Valor por defecto: Tecla Tab
+            this.VoiceKey = SButton.Tab;
         }
     }
 }
