@@ -94,7 +94,7 @@ Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente
   - [x] **1.3 Mock de Grabación (Logs):** Se implementaron mensajes "Iniciando captura de voz..." y "Captura finalizada." con `LogLevel.Debug`.
   - [x] **1.4 Filtro y Búsqueda de NPC:** Se añadió la búsqueda en un radio de 3 tiles. Validación nativa: Es aldeano, puede socializar, y **NO** está en una `NpcBlacklist` explícita (Se removió la necesidad de haber hablado con él primero con el clic derecho).
   - [x] **1.5 Halt & Face Nativo (Push-To-Talk y Pausa de Rutina):** Se corrigió la lógica de "congelamiento". Ahora, al presionar TAB, se llama a `npc.Halt()` y se aplica un único `movementPause` para que el motor de rutinas no se buggee, eliminando el refresco constante que los dejaba paralizados.
-  - [x] **1.6 Condición de Salida y Liberación Limpia:** Al expirar los 15 segundos o alejarse 6 tiles, se llama al método `ReleaseTargetNpc`, que simplemente resetea la pausa `movementPause = 0` para garantizar que el motor retome su horario con normalidad de manera compatible.
+  - [x] **1.6 Condición de Salida y Liberación Limpia:** Al expirar los 15 segundos o alejarse 6 tiles, se llama al método `ReleaseTargetNpc`, que aplica una pequeña pausa y ejecuta `ClearDirectedAnimation()` para garantizar que el NPC retome su horario con normalidad.
 
 ### ⏳ Fases Futuras
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real del `Microphone`).
@@ -138,7 +138,7 @@ Este apartado compila y refina todas las metas arquitectónicas y mecánicas dis
 ---
 
 ***
-**💡 NOTA PARA LA IA EN FUTURAS SESIONES:** 
+**💡 NOTA PARA LA IA EN FUTURAS SESIONES:**
 Soy tu usuario. Revisa continuamente esta sección "Master Design Document" antes de generar código. Me gusta la inmersión, el balance y no romper el gameplay core de Stardew. Antes de diseñar una nueva característica técnica, pregúntame siempre: *"¿Crees que esta forma rompe la inmersión? ¿Se te ocurre una manera más fluida de integrarlo al juego?"*
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
