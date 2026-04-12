@@ -1,7 +1,7 @@
-# Stardew Living Valley - Jules Notes
+# Living Companions Valley - Jules Notes
 
 **Fecha de Inicio:** Abril 2026
-**Proyecto:** Stardew Living Valley (Mod de IA y Voice-to-Text para Stardew Valley)
+**Proyecto:** Living Companions Valley (Mod de IA y Voice-to-Text para Stardew Valley)
 **Autor:** Studio Corvus
 
 Este documento sirve como registro oficial de desarrollo, historial de sesiones y guía de instrucciones para el flujo de trabajo entre Jules (IA) y el desarrollador local.
@@ -31,7 +31,7 @@ Dado que este proyecto está construido como un Mod de SMAPI, **debes compilar e
    ```bash
    dotnet build
    ```
-   *(Nota: `ModBuildConfig` buscará automáticamente la ruta de tu instalación de Stardew Valley y copiará el mod generado directamente en la carpeta `Mods/StardewLivingValley`).*
+   *(Nota: `ModBuildConfig` buscará automáticamente la ruta de tu instalación de Stardew Valley y copiará el mod generado directamente en la carpeta `Mods/LivingCompanionsValley`).*
 
 **En caso de error "Game Path Not Found":**
 Si el paquete de build de SMAPI no detecta automáticamente la ubicación de tu juego, deberás crear un archivo en la raíz llamado `stardewvalley.targets` (o usar la variable de entorno de tu SO) y apuntarlo manualmente a la carpeta de tu juego. Ejemplo:
@@ -69,7 +69,7 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
   - Creación del archivo `.gitignore` estricto (excluyendo bin/obj y configuraciones secretas).
   - Creación de estructura de directorios escalable.
   - Creación del archivo `manifest.json`.
-  - Creación de archivo de proyecto `StardewLivingValley.csproj` configurado para .NET 6.0 y SMAPI.
+  - Creación de archivo de proyecto `LivingCompanionsValley.csproj` configurado para .NET 6.0 y SMAPI.
   - Creación de `ModEntry.cs` con el punto de entrada y logs iniciales.
   - Creación de `ModConfig.cs` y `SecretConfig.cs`.
   - **Prueba de compilación local exitosa:** Se resolvieron problemas de versión de C# (`LangVersion`) y se confirmó que el `dotnet build` empaqueta el mod en la máquina local exitosamente.
@@ -105,7 +105,7 @@ Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente
 
 ## 🔮 MASTER DESIGN DOCUMENT: VISIÓN FUTURA Y ARQUITECTURA
 
-Este apartado compila y refina todas las metas arquitectónicas y mecánicas discutidas en nuestras sesiones de "brainstorming". Este es el plano definitivo para guiar el desarrollo de las futuras versiones de "Stardew Living Valley".
+Este apartado compila y refina todas las metas arquitectónicas y mecánicas discutidas en nuestras sesiones de "brainstorming". Este es el plano definitivo para guiar el desarrollo de las futuras versiones de "Living Companions Valley".
 
 ### 1. Sistema Híbrido de Interfaz y Manejo del Tiempo (UI/UX)
 **Objetivo:** Evitar que el jugador sufra interrupciones abruptas por la latencia de las llamadas a API (Whisper/Venice).
@@ -143,3 +143,8 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
 - **Error CS1617 al compilar (`LangVersion 12`)**: Se solucionó cambiando la versión de C# de `12` a `10` en el `.csproj` ya que el SDK local de .NET 6 no soporta C# 12. Se reactivó la variable de SMAPI `EnableModDeploy` en el archivo de proyecto para asegurar el autodespliegue.
+
+## 2026-04-12 - Solución a Error de Carga de DLL (Cambio de Nombre)
+- Se cambió el nombre de todo el proyecto de `StardewAIMod` (y la transición temporal de `Stardew Living Valley`) al nombre oficial y final: **`Living Companions Valley`**.
+- Se renombró el archivo `.csproj` y las configuraciones de `manifest.json`.
+- Se instruyó al usuario que elimine la carpeta de mods antigua (`StardewAIMod` / `Stardew Living Valley`) para prevenir colisiones de nombres de DLL en la carga de SMAPI.

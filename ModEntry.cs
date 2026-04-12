@@ -1,12 +1,12 @@
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using StardewLivingValley.Configuration;
-using StardewLivingValley.Services;
+using LivingCompanionsValley.Configuration;
+using LivingCompanionsValley.Services;
 
-namespace StardewLivingValley
+namespace LivingCompanionsValley
 {
     /// <summary>
-    /// El punto de entrada principal para el mod Stardew Living Valley.
+    /// El punto de entrada principal para el mod Living Companions Valley.
     /// </summary>
     public class ModEntry : Mod
     {
@@ -47,7 +47,7 @@ namespace StardewLivingValley
             _voiceManager = new VoiceInteractionManager(helper, _config, _veniceApiService);
 
             // Log de inicio exitoso
-            Logger.Log("Stardew Living Valley loaded successfully.", LogLevel.Info);
+            Logger.Log("Living Companions Valley loaded successfully.", LogLevel.Info);
 
             // Preparación de eventos base
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;

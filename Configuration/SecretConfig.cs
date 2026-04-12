@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace StardewLivingValley.Configuration
+namespace LivingCompanionsValley.Configuration
 {
     /// <summary>
     /// Configuraciones secretas que no deben subirse al repositorio,

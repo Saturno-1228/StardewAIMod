@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using StardewModdingAPI;
 
-namespace StardewLivingValley.Services
+namespace LivingCompanionsValley.Services
 {
     /// <summary>
     /// Servicio para comunicarse con la API de Venice AI.

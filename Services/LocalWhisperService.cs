@@ -5,7 +5,7 @@ using StardewModdingAPI;
 using Whisper.net;
 using Whisper.net.Ggml;
 
-namespace StardewLivingValley.Services
+namespace LivingCompanionsValley.Services
 {
     /// <summary>
     /// Servicio que envuelve la lógica asíncrona de Whisper.net para transcripción offline.

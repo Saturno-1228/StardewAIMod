@@ -1,10 +1,10 @@
 {
-  "Name": "Stardew Living Valley",
+  "Name": "Living Companions Valley",
   "Author": "Studio Corvus",
   "Version": "1.0.0",
   "Description": "Da vida real a los NPCs de Stardew Valley con conversaciones de IA, memoria persistente y sistema de voz.",
-  "UniqueID": "StudioCorvus.StardewLivingValley",
-  "EntryDll": "StardewLivingValley.dll",
+  "UniqueID": "StudioCorvus.LivingCompanionsValley",
+  "EntryDll": "LivingCompanionsValley.dll",
   "MinimumApiVersion": "4.0.0",
   "UpdateKeys": []
 }
