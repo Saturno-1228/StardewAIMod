@@ -19,6 +19,8 @@ namespace StardewLivingValley.Services
 
         private NPC? _targetNpc;
         private bool _isInteractionActive;
+        private bool _isRecordingVoice;
+        private double _lastInteractionTime;
 
         /// <summary>
         /// Lista de NPCs que nunca deben ser contactados mediante el mod de IA.
@@ -72,11 +74,23 @@ namespace StardewLivingValley.Services
 
                 if (nearestNpc != null)
                 {
+                    // Si ya estábamos hablando con OTRO NPC y no lo hemos liberado, lo liberamos primero
+                    if (_targetNpc != null && _targetNpc != nearestNpc)
+                    {
+                        ModEntry.Logger?.Log($"Cambiando de objetivo. Liberando a {_targetNpc.Name}...", LogLevel.Debug);
+                        _targetNpc.movementPause = 0;
+                    }
+
                     ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
 
-                    // Guardamos la referencia y activamos el estado de interacción
+                    // Guardamos la referencia, activamos el estado de interacción y marcamos que estamos grabando
                     _targetNpc = nearestNpc;
                     _isInteractionActive = true;
+                    _isRecordingVoice = true;
+
+                    // Respuesta visual inmediata en lugar de esperar hasta el próximo UpdateTicked
+                    _targetNpc.movementPause = 5000;
+                    _targetNpc.facePlayer(Game1.player);
                 }
                 else
                 {
@@ -145,8 +159,12 @@ namespace StardewLivingValley.Services
             if (e.Button == _config.VoiceKey)
             {
                 ModEntry.Logger?.Log("Captura de voz finalizada. Procesando (el NPC espera)...", LogLevel.Debug);
-                // Nota: No limpiamos _isInteractionActive aquí. El NPC seguirá esperando
-                // hasta que nos alejemos o (en el futuro) termine de hablar la IA.
+                
+                // Dejamos de grabar, pero MANTENEMOS la interacción activa para que espere
+                _isRecordingVoice = false;
+                
+                // Registramos el momento exacto en que soltamos el botón para el temporizador de inactividad
+                _lastInteractionTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
             }
         }
 
@@ -155,15 +173,28 @@ namespace StardewLivingValley.Services
         /// </summary>
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
         {
+            if (!Context.IsWorldReady || Game1.player == null)
+                return;
+
             if (!_isInteractionActive || _targetNpc == null)
                 return;
 
             // Optimización: Solo ejecutar la lógica 2 veces por segundo (cada 30 ticks)
             if (e.IsMultipleOf(30))
             {
+                // Condición de Salida: Cambio de locación
+                if (Game1.player.currentLocation != _targetNpc.currentLocation)
+                {
+                    ModEntry.Logger?.Log($"El jugador ha cambiado de locación. Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
+                    _targetNpc.movementPause = 0;
+                    _isInteractionActive = false;
+                    _targetNpc = null;
+                    return;
+                }
+
                 float distance = Vector2.Distance(Game1.player.Tile, _targetNpc.Tile);
 
-                // Si el jugador se aleja a más de 6 tiles, cancelamos la interacción
+                // Condición de Salida: Alejamiento (Distancia mayor a 6 tiles)
                 if (distance > 6f)
                 {
                     ModEntry.Logger?.Log($"El jugador se ha alejado de {_targetNpc.Name}. Finalizando interacción.", LogLevel.Debug);
@@ -171,6 +202,21 @@ namespace StardewLivingValley.Services
                     _isInteractionActive = false;
                     _targetNpc = null;
                     return;
+                }
+
+                // Condición de Salida: Timeout por inactividad máxima de 15 segundos
+                // Solo se cuenta el tiempo si NO estamos grabando la voz actualmente
+                if (!_isRecordingVoice)
+                {
+                    double timeSinceLastInteraction = Game1.currentGameTime.TotalGameTime.TotalSeconds - _lastInteractionTime;
+                    if (timeSinceLastInteraction > 15.0)
+                    {
+                        ModEntry.Logger?.Log($"Tiempo de espera superado (15s) con {_targetNpc.Name}. Finalizando interacción.", LogLevel.Debug);
+                        _targetNpc.movementPause = 0; // Liberamos al NPC
+                        _isInteractionActive = false;
+                        _targetNpc = null;
+                        return;
+                    }
                 }
 
                 // Mantener al NPC detenido y mirándonos pacientemente
