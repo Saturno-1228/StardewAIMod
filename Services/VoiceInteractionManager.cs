@@ -27,7 +27,6 @@ namespace LivingCompanionsValley.Services
         private bool _isInteractionActive;
         private bool _isRecordingVoice;
         private double _lastInteractionTime;
-        private int _originalNpcSpeed;
 
         // Microphone state
         private Microphone? _microphone;
@@ -121,13 +120,24 @@ namespace LivingCompanionsValley.Services
                     _isInteractionActive = true;
                     _isRecordingVoice = true;
 
-                    // Respuesta visual inmediata: detenerlo y mirarnos.
-                    _targetNpc.Halt();
-                    _targetNpc.facePlayer(Game1.player);
+                    // Verificar si el NPC está realizando una animación especial (ej. sentado).
+                    // Si el sprite tiene una animación actual, evitamos Halt() y facePlayer() para no romperla.
+                    bool isPlayingSpecialAnimation = _targetNpc.Sprite?.CurrentAnimation != null;
 
-                    // Guardar velocidad original y ponerla a 0 en lugar de usar movementPause
-                    _originalNpcSpeed = _targetNpc.speed;
-                    _targetNpc.speed = 0;
+                    if (!isPlayingSpecialAnimation)
+                    {
+                        // Respuesta visual inmediata: detenerlo y mirarnos.
+                        _targetNpc.Halt();
+                        _targetNpc.facePlayer(Game1.player);
+                    }
+                    else
+                    {
+                        ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Trace);
+                    }
+                    
+                    // Usar movementPause para detener el movimiento en lugar de modificar la velocidad.
+                    // Esto detiene los pies. Se renovará en UpdateTicked mientras la interacción siga activa.
+                    _targetNpc.movementPause = 5000;
                     
                     // Iniciar grabación de audio
                     if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
@@ -240,14 +250,19 @@ namespace LivingCompanionsValley.Services
         {
             try
             {
+                ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Trace);
+                
                 // Convertir PCM 16-bit a Float 32-bit (16kHz asumido)
                 float[] floatAudio = ConvertPcm16ToFloat(audioData);
+                ModEntry.Logger?.Log($"Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Trace);
 
                 // 1. Transcribir audio
+                ModEntry.Logger?.Log("Llamando a Whisper para transcribir...", LogLevel.Trace);
                 string transcription = await _whisperService.TranscribeAudioAsync(floatAudio);
 
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
                 {
+                    ModEntry.Logger?.Log($"La transcripción fue nula, vacía o devolvió error: '{transcription}'. Cancelando llamado a Venice.", LogLevel.Debug);
                     ShowBubble(npcName, "...");
                     return;
                 }
@@ -255,6 +270,7 @@ namespace LivingCompanionsValley.Services
                 ModEntry.Logger?.Log($"Usuario dijo: {transcription}", LogLevel.Debug);
 
                 // 2. Obtener respuesta de Venice
+                ModEntry.Logger?.Log("Llamando a Venice API para obtener respuesta...", LogLevel.Trace);
                 string npcResponse = await _veniceApiService.GetNpcResponseAsync(npcName, transcription);
 
                 ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Debug);
@@ -264,7 +280,7 @@ namespace LivingCompanionsValley.Services
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error al procesar la interacción: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error al procesar la interacción de voz: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
                 ShowBubble(npcName, "Lo siento, me he distraído...");
             }
         }
@@ -306,9 +322,7 @@ namespace LivingCompanionsValley.Services
 
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
             
-            // Restauramos la velocidad original para que continúe su ruta
-            _targetNpc.speed = _originalNpcSpeed;
-            // Aseguramos que no quede pausado por otras razones
+            // Permitimos que el juego recupere el control del movimiento (sus pies volverán a moverse cuando camine)
             _targetNpc.movementPause = 0;
 
             // Limpiamos referencias
@@ -378,8 +392,13 @@ namespace LivingCompanionsValley.Services
                     }
                 }
 
-                // El NPC está detenido de forma segura porque su velocidad es 0.
-                // No es necesario renovar variables aquí.
+                // Renovar el movementPause mientras la interacción esté activa para evitar que caminen o se muevan los pies.
+                // Usamos un valor grande (ej. 3000ms) pero evitamos asignarlo repetidamente si ya tiene un valor alto
+                // para no romper la lógica interna de algunas rutinas nativas.
+                if (_targetNpc.movementPause < 1000)
+                {
+                    _targetNpc.movementPause = 3000;
+                }
             }
         }
     }
