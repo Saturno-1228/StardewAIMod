@@ -132,12 +132,13 @@ namespace LivingCompanionsValley.Services
                     }
                     else
                     {
-                        ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Trace);
+                        ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Debug);
                     }
                     
                     // Usar movementPause para detener el movimiento en lugar de modificar la velocidad.
-                    // Esto detiene los pies. Se renovará en UpdateTicked mientras la interacción siga activa.
-                    _targetNpc.movementPause = 5000;
+                    // Esto detiene los pies. Un valor masivo asegura que nunca expire prematuramente
+                    // evitando el congelamiento permanente por renovarlo en UpdateTicked.
+                    _targetNpc.movementPause = 100000;
                     
                     // Iniciar grabación de audio
                     if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
@@ -233,7 +234,7 @@ namespace LivingCompanionsValley.Services
                         // 0.5 segundos son 16,000 bytes.
                         if (finalAudioData.Length < 16000)
                         {
-                            ModEntry.Logger?.Log("Grabación demasiado corta (toque accidental). Cancelando interacción.", LogLevel.Debug);
+                            ModEntry.Logger?.Log($"[INFO] Grabación demasiado corta ({finalAudioData.Length} bytes, menos de 0.5s). Cancelando interacción por toque accidental.", LogLevel.Info);
                             ReleaseTargetNpc("Interacción cancelada (grabación corta).");
                             return;
                         }
@@ -250,14 +251,14 @@ namespace LivingCompanionsValley.Services
         {
             try
             {
-                ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Trace);
+                ModEntry.Logger?.Log($"[INFO] Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
                 
                 // Convertir PCM 16-bit a Float 32-bit (16kHz asumido)
                 float[] floatAudio = ConvertPcm16ToFloat(audioData);
-                ModEntry.Logger?.Log($"Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Trace);
+                ModEntry.Logger?.Log($"[INFO] Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Info);
 
                 // 1. Transcribir audio
-                ModEntry.Logger?.Log("Llamando a Whisper para transcribir...", LogLevel.Trace);
+                ModEntry.Logger?.Log("[INFO] Llamando a Whisper para transcribir...", LogLevel.Info);
                 string transcription = await _whisperService.TranscribeAudioAsync(floatAudio);
 
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
@@ -267,13 +268,13 @@ namespace LivingCompanionsValley.Services
                     return;
                 }
 
-                ModEntry.Logger?.Log($"Usuario dijo: {transcription}", LogLevel.Debug);
+                ModEntry.Logger?.Log($"[INFO] Usuario dijo (Transcrito): {transcription}", LogLevel.Info);
 
                 // 2. Obtener respuesta de Venice
-                ModEntry.Logger?.Log("Llamando a Venice API para obtener respuesta...", LogLevel.Trace);
+                ModEntry.Logger?.Log("[INFO] Llamando a Venice API para obtener respuesta...", LogLevel.Info);
                 string npcResponse = await _veniceApiService.GetNpcResponseAsync(npcName, transcription);
 
-                ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Debug);
+                ModEntry.Logger?.Log($"[INFO] {npcName} responde: {npcResponse}", LogLevel.Info);
 
                 // 3. Mostrar la respuesta en la UI principal
                 ShowBubble(npcName, npcResponse);
@@ -392,13 +393,9 @@ namespace LivingCompanionsValley.Services
                     }
                 }
 
-                // Renovar el movementPause mientras la interacción esté activa para evitar que caminen o se muevan los pies.
-                // Usamos un valor grande (ej. 3000ms) pero evitamos asignarlo repetidamente si ya tiene un valor alto
-                // para no romper la lógica interna de algunas rutinas nativas.
-                if (_targetNpc.movementPause < 1000)
-                {
-                    _targetNpc.movementPause = 3000;
-                }
+                // Se eliminó la renovación constante de movementPause para evitar el congelamiento
+                // permanente del NPC tras finalizar la interacción. Su valor de 100,000 inicial
+                // es suficiente para mantenerlo quieto sin romper su motor.
             }
         }
     }
