@@ -166,3 +166,9 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Se detectó a través de los logs que la IA no respondía porque `Microphone.Default` devolvía nulo (el juego no detectaba micrófono), lo que causaba un salto silencioso del procesamiento. Se añadieron validaciones críticas para abortar la interacción y notificar al usuario (HUD y Consola) si no hay micrófono.
 - Los logs asíncronos de Whisper y Venice se elevaron a `LogLevel.Info` para asegurar visibilidad en la consola predeterminada de SMAPI.
 - Se implementó la solución definitiva para el control de movimiento: usar `npc.freezeMotion = true` (y `false` al terminar). Esto congela completamente al NPC y sus pies sin corromper el Schedule (como lo hace `movementPause`) y sin bugs visuales (como lo hace `speed=0`).
+
+## 2026-04-12 - Acceso a Campos Protegidos del Juego Base
+- Al implementar `freezeMotion`, el compilador arrojó el error **CS0122** porque la variable tiene un nivel de protección (es un campo privado/protegido en la clase base de Stardew Valley).
+- **Lección/Solución Futura:** Siempre que haya problemas con protecciones de variables o métodos internos del juego, **NUNCA** intentar modificar la librería directamente. En su lugar, utilizar el sistema de Reflection integrado en SMAPI:
+  - Leer/Escribir campos: `_helper.Reflection.GetField<Tipo>(objeto, "nombreVariable").SetValue(valor);`
+  - Llamar métodos: `_helper.Reflection.GetMethod(objeto, "nombreMetodo").Invoke(parametros);`
