@@ -17,6 +17,18 @@
   </PropertyGroup>
 
 
+  <!-- Copiar automáticamente las bibliotecas nativas de Whisper.net al directorio de salida principal para SMAPI -->
+  <Target Name="CopyWhisperNativeLibs" AfterTargets="Build">
+    <ItemGroup>
+      <WhisperRuntimesWin Include="$(TargetDir)runtimes\win-x64\*.*" />
+      <WhisperRuntimesLinux Include="$(TargetDir)runtimes\linux-x64\*.*" />
+      <WhisperRuntimesMac Include="$(TargetDir)runtimes\macos-x64\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WhisperRuntimesWin)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(WhisperRuntimesLinux)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(WhisperRuntimesMac)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
     <PackageReference Include="Whisper.net" Version="1.9.0" />
