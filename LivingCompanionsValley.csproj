@@ -27,4 +27,23 @@
     <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
   </ItemGroup>
 
+  <Target Name="CopyNativeWhisper" AfterTargets="Build">
+    <ItemGroup>
+      <!-- Windows x64 - el único que necesitas -->
+      <NativeWin Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\runtimes\win-x64\native\whisper.dll" />
+    </ItemGroup>
+
+    <!-- Copia whisper.dll al output -->
+    <Copy
+      SourceFiles="@(NativeWin)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('@(NativeWin)')" />
+
+    <!-- Elimina ggml-metal.metal si quedó copiado por error -->
+    <Delete Files="$(OutputPath)ggml-metal.metal" Condition="Exists('$(OutputPath)ggml-metal.metal')" />
+
+    <Message Text="✅ whisper.dll nativo (win-x64) copiado correctamente" Importance="high" />
+  </Target>
+
 </Project>
