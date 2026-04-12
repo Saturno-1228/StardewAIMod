@@ -175,10 +175,9 @@ namespace StardewLivingValley.Services
             if (_targetNpc == null) return;
 
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
-
-            // Le damos una pausa de 1 segundo (similar al nativo) y restauramos la animación
-            _targetNpc.movementPause = 1000;
-            _targetNpc.ClearDirectedAnimation();
+            
+            // Permitimos que el juego recupere el control del movimiento
+            _targetNpc.movementPause = 0;
 
             // Limpiamos referencias
             _isInteractionActive = false;
