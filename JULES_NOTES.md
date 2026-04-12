@@ -156,3 +156,8 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 ## 2026-04-12 - Solución de Conflicto de Versión NU1605 con System.Text.Json
 - Después de forzar la versión `6.0.0` de `System.Text.Json` para compatibilidad con SMAPI, el compilador arrojó el error `NU1605 (Package downgrade)` porque `Whisper.net v1.9.0` introdujo una nueva dependencia transitiva (`Microsoft.Extensions.AI.Abstractions v10.0.0`) que exige obligatoriamente `System.Text.Json >= 10.0.0`.
 - Para resolver este choque arquitectónico sin romper SMAPI, se bajó la versión de `Whisper.net` y `Whisper.net.Runtime` de la `1.9.0` a la `1.8.1`, la cual no tiene esta dependencia transitiva de .NET 10 y es perfectamente compatible con `.NET 6.0` nativo.
+
+## 2026-04-12 - Solución de Movimiento y Validación Rápida en VoiceInteractionManager
+- Se arregló un error donde los NPCs continuaban caminando (rompiendo la interacción) o se quedaban congelados de forma permanente.
+- Para detener a un NPC sin romper su 'schedule' o motor de movimiento (`movementPause`), se guarda su velocidad original (`_originalNpcSpeed = npc.speed`), se fija la velocidad actual a `0` (`npc.speed = 0`), y cuando se liberan (al terminar la interacción, pasados 15s o si el usuario se aleja) se restaura la velocidad original, eliminando completamente la necesidad de actualizar o depender de variables temporales.
+- Se añadió una validación ('Debounce') en el evento del teclado `OnButtonReleased`: si los datos del buffer de audio ocupan menos de `16000 bytes` (aprox. `0.5 segundos` en 16Hz/16bit), la interacción se aborta inmediatamente y el NPC es liberado. Esto previene interacciones fantasma o envíos innecesarios a la IA por presiones accidentales a la tecla rápida.

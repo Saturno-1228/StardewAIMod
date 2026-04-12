@@ -27,6 +27,7 @@ namespace LivingCompanionsValley.Services
         private bool _isInteractionActive;
         private bool _isRecordingVoice;
         private double _lastInteractionTime;
+        private int _originalNpcSpeed;
 
         // Microphone state
         private Microphone? _microphone;
@@ -120,12 +121,13 @@ namespace LivingCompanionsValley.Services
                     _isInteractionActive = true;
                     _isRecordingVoice = true;
 
-                    // Respuesta visual inmediata: detenerlo, mirarnos y pausarlo.
+                    // Respuesta visual inmediata: detenerlo y mirarnos.
                     _targetNpc.Halt();
                     _targetNpc.facePlayer(Game1.player);
-                    // Aplicar una pausa inicial. No la renovaremos en UpdateTicked para evitar
-                    // conflictos con el motor de rutas nativo.
-                    _targetNpc.movementPause = 5000;
+
+                    // Guardar velocidad original y ponerla a 0 en lugar de usar movementPause
+                    _originalNpcSpeed = _targetNpc.speed;
+                    _targetNpc.speed = 0;
                     
                     // Iniciar grabación de audio
                     if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
@@ -216,6 +218,16 @@ namespace LivingCompanionsValley.Services
                         _audioMemoryStream.Dispose();
                         _audioMemoryStream = null;
 
+                        // Validar si el audio grabado es demasiado corto (ej. toque rápido por error).
+                        // Asumiendo formato de 16 bits (2 bytes) a 16kHz, 1 segundo son 32,000 bytes.
+                        // 0.5 segundos son 16,000 bytes.
+                        if (finalAudioData.Length < 16000)
+                        {
+                            ModEntry.Logger?.Log("Grabación demasiado corta (toque accidental). Cancelando interacción.", LogLevel.Debug);
+                            ReleaseTargetNpc("Interacción cancelada (grabación corta).");
+                            return;
+                        }
+
                         // Lanzar el procesamiento en background
                         string npcName = _targetNpc.Name;
                         Task.Run(() => ProcessAudioAndGetResponseAsync(npcName, finalAudioData));
@@ -267,8 +279,6 @@ namespace LivingCompanionsValley.Services
                     if (character.Name == npcName)
                     {
                         character.showTextAboveHead(text);
-                        // Refrescar el movement pause para darle tiempo de mostrar el texto sin huir
-                        character.movementPause = Math.Max(character.movementPause, 3000);
                         break;
                     }
                 }
@@ -296,7 +306,9 @@ namespace LivingCompanionsValley.Services
 
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
             
-            // Permitimos que el juego recupere el control del movimiento
+            // Restauramos la velocidad original para que continúe su ruta
+            _targetNpc.speed = _originalNpcSpeed;
+            // Aseguramos que no quede pausado por otras razones
             _targetNpc.movementPause = 0;
 
             // Limpiamos referencias
@@ -366,9 +378,8 @@ namespace LivingCompanionsValley.Services
                     }
                 }
 
-                // Ya no renovamos el _targetNpc.movementPause = 5000 aquí.
-                // Permitimos que la pausa inicial persista para que al final el motor nativo la recupere.
-                // Si la pausa expira, simplemente se quedarán cerca pero no se congelarán permanentemente.
+                // El NPC está detenido de forma segura porque su velocidad es 0.
+                // No es necesario renovar variables aquí.
             }
         }
     }
