@@ -78,13 +78,22 @@ Se ha implementado una estructura avanzada y escalable para futuras fases:
 
 ## 📌 TAREAS PENDIENTES (Siguientes Fases)
 
-### 🎙️ Fase 1 (ACTIVA): Sistema de Atajos y Preparación Voice-to-Text (Push to Talk)
-*(Nota para la IA: Sigue estos micro-pasos secuencialmente en la próxima sesión. Marca con `[x]` o muévelos a la sección de "Acciones Realizadas" conforme se vayan completando y el usuario confirme que funcionan).*
-- [ ] **1.1 Arquitectura:** Crear la clase `VoiceInteractionManager.cs` en la carpeta `Services/` (mantener `ModEntry.cs` limpio).
-- [ ] **1.2 Captura de Eventos Básica:** Conectar los eventos de SMAPI (`ButtonPressed` y `ButtonReleased`) a la nueva clase para monitorear la tecla configurada (ej. Tab).
-- [ ] **1.3 Mock de Grabación (Logs):** Al presionar la tecla imprimir "Iniciando captura de voz..." en la consola, y al soltar imprimir "Captura finalizada.". (Prueba local requerida).
-- [ ] **1.4 Filtro y Búsqueda de NPC:** Añadir la lógica para detectar si hay un NPC válido cerca del jugador al iniciar la grabación.
-- [ ] **1.5 Halt & Face:** Hacer que el NPC detectado detenga su movimiento y voltee a mirar al jugador.
+## 🎮 CAPACIDADES ACTUALES DEL MOD (Versión Actual)
+Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente lo que hace:
+1. **Atajo Configurable:** Monitorea la tecla `Tab` de tu teclado (o la que definas en el config.json generado al abrir el juego por primera vez).
+2. **Push-To-Talk "Simulado":** Al mantener presionada la tecla, registra en la consola de SMAPI (modo Debug) un mensaje de inicio de captura de voz. Al soltarla, registra el fin.
+3. **Escaneo de Entorno:** Cuando presionas la tecla, busca instantáneamente en un radio de 3 baldosas ("tiles") a tu alrededor.
+4. **Filtro Inteligente:** Ignora animales, monstruos, mascotas, NPCs no descubiertos, y personajes especiales protegidos por historia (como el Bouncer del Casino o Mr. Qi).
+5. **Inmersión Básica (Halt & Face):** Si encuentra un NPC válido (ej. Marnie), interrumpe su caminata o rutina (`Halt()`) y hace que se dé la vuelta para mirarte directamente a los ojos mientras "hablas".
+
+### ✅ Fase 1: Sistema de Atajos y Preparación Voice-to-Text (Push to Talk)
+- **Estado:** COMPLETADO
+- **Acciones Realizadas:**
+  - [x] **1.1 Arquitectura:** Se creó la clase `VoiceInteractionManager.cs` en la carpeta `Services/`.
+  - [x] **1.2 Captura de Eventos Básica:** Se conectaron los eventos de SMAPI (`ButtonPressed` y `ButtonReleased`) para escuchar `VoiceKey` (SButton.Tab por defecto configurable en `ModConfig`).
+  - [x] **1.3 Mock de Grabación (Logs):** Se implementaron mensajes "Iniciando captura de voz..." y "Captura finalizada." con `LogLevel.Debug`.
+  - [x] **1.4 Filtro y Búsqueda de NPC:** Se añadió la búsqueda en un radio de 3 tiles. Se implementó una cuádruple validación: Es aldeano, puede socializar, el jugador ya lo conoció, y **NO** está en una `NpcBlacklist` explícita (para proteger mecánicas con NPCs de historia o decorativos).
+  - [x] **1.5 Halt & Face:** Al encontrar un NPC válido, se ejecuta `.Halt()` y `.facePlayer(Game1.player)`.
 
 ### ⏳ Fases Futuras
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real del `Microphone`).

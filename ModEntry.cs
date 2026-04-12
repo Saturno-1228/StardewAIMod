@@ -1,5 +1,7 @@
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using StardewLivingValley.Configuration;
+using StardewLivingValley.Services;
 
 namespace StardewLivingValley
 {
@@ -13,6 +15,9 @@ namespace StardewLivingValley
         /// </summary>
         internal static IMonitor? Logger { get; private set; }
 
+        private ModConfig? _config;
+        private VoiceInteractionManager? _voiceManager;
+
         /// <summary>
         /// El método de entrada invocado por SMAPI.
         /// </summary>
@@ -22,8 +27,14 @@ namespace StardewLivingValley
             // Guardar referencia del monitor para ser usada globalmente
             Logger = this.Monitor;
 
-            // Log de inicio exitoso (fase 0)
-            Logger.Log("Stardew Living Valley loaded.", LogLevel.Info);
+            // Cargar configuración
+            _config = helper.ReadConfig<ModConfig>();
+
+            // Inicializar servicios principales
+            _voiceManager = new VoiceInteractionManager(helper, _config);
+
+            // Log de inicio exitoso
+            Logger.Log("Stardew Living Valley loaded successfully.", LogLevel.Info);
 
             // Preparación de eventos base
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
