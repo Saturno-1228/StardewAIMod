@@ -80,16 +80,23 @@ namespace LivingCompanionsValley.Services
                 return "[Error] Whisper no está inicializado.";
             }
 
+            // Timeout de 15 segundos para evitar que Whisper se quede colgado
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+
             try
             {
                 ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Info);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 
-                // Whisper.net espera los datos en un stream de floats o un array procesado
                 string resultText = "";
-                await foreach (var result in _processor.ProcessAsync(floatAudioBuffer))
+
+                ModEntry.Logger?.Log("Iniciando ProcessAsync con Whisper.net...", LogLevel.Trace);
+
+                // Whisper.net espera los datos en un stream de floats o un array procesado
+                await foreach (var result in _processor.ProcessAsync(floatAudioBuffer, cts.Token))
                 {
                     resultText += result.Text;
+                    ModEntry.Logger?.Log($"Segmento transcrito detectado: '{result.Text}'", LogLevel.Trace);
                 }
                 
                 stopwatch.Stop();
@@ -97,6 +104,11 @@ namespace LivingCompanionsValley.Services
                 ModEntry.Logger?.Log($"Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
 
                 return finalTrimmedText;
+            }
+            catch (OperationCanceledException)
+            {
+                ModEntry.Logger?.Log("[Error] Tiempo de espera agotado (15s) al transcribir con Whisper. Posible cuelgue del modelo.", LogLevel.Error);
+                return "[Error] Tiempo de espera agotado al transcribir.";
             }
             catch (Exception ex)
             {

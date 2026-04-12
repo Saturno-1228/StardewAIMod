@@ -175,3 +175,4 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - [X] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real). Se reemplazó el uso de `Microsoft.Xna.Framework.Audio.Microphone` por `NAudio` y su clase `WaveInEvent` para que funcionase en sistemas con Windows como se requería.
 - Arreglado bug lógico en `VoiceInteractionManager.cs` que impedía que NAudio comenzara la captura del micrófono debido a un cambio de estado anticipado de `_isRecordingVoice`.
 - Añadidos logs de diagnóstico adicionales para rastrear correctamente el ciclo de vida de la grabación de voz y detectar posibles problemas con nulos o capturas vacías.
+- **Corregido:** Añadido timeout de 15 segundos mediante `CancellationTokenSource` y `try-catch` en `LocalWhisperService.cs` (`TranscribeAudioAsync`) para evitar que Whisper.net se cuelgue silenciosamente, además de añadir logs adicionales durante el procesamiento de cada segmento.
