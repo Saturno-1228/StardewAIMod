@@ -71,18 +71,35 @@ namespace LivingCompanionsValley
         }
 
         private void PreloadNativeWhisper(IModHelper helper)
+{
+    var modDir = helper.DirectoryPath;
+
+    // Cargar las dependencias de ggml primero, en orden,
+    // para que Windows no busque versiones incorrectas en el sistema
+    var dlls = new[]
+    {
+        "ggml-base-whisper.dll",
+        "ggml-cpu-whisper.dll",
+        "ggml-whisper.dll",
+        "whisper.dll"
+    };
+
+    foreach (var dllName in dlls)
+    {
+        var fullPath = Path.Combine(modDir, dllName);
+        try
         {
-            var nativePath = System.IO.Path.Combine(helper.DirectoryPath, "whisper.dll");
-            if (System.IO.File.Exists(nativePath))
+            if (!File.Exists(fullPath))
             {
-                System.Runtime.InteropServices.NativeLibrary.Load(nativePath);
-                Logger?.Log($"[Whisper] Native DLL cargada: {nativePath}", LogLevel.Info);
+                Logger?.Log($"[Whisper] No encontrado: {dllName}", LogLevel.Warn);
+                continue;
             }
-            else
-            {
-                Logger?.Log($"[ERROR] whisper.dll no encontrada en: {nativePath}", LogLevel.Error);
-                Logger?.Log("[ERROR] El mod no funcionará sin el runtime nativo de Whisper.", LogLevel.Error);
-            }
+            System.Runtime.InteropServices.NativeLibrary.Load(fullPath);
+            Logger?.Log($"[Whisper] Cargado: {dllName}", LogLevel.Info);
+        }
+        catch (Exception ex)
+        {
+            Logger?.Log($"[Whisper] Error cargando {dllName}: {ex.Message}", LogLevel.Warn);
         }
     }
 }
