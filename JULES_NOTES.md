@@ -148,3 +148,7 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Se cambió el nombre de todo el proyecto de `StardewAIMod` (y la transición temporal de `Stardew Living Valley`) al nombre oficial y final: **`Living Companions Valley`**.
 - Se renombró el archivo `.csproj` y las configuraciones de `manifest.json`.
 - Se instruyó al usuario que elimine la carpeta de mods antigua (`StardewAIMod` / `Stardew Living Valley`) para prevenir colisiones de nombres de DLL en la carga de SMAPI.
+
+## 2026-04-12 - Solución de Conflicto de Versión de Assembly en .NET 10
+- Cuando se compilaba el mod con el SDK más reciente de .NET (por ejemplo, `10.0.0.0`), SMAPI (que corre en .NET 6.0) rechazaba cargar el mod por un `FileLoadException: Could not load file or assembly 'System.Text.Encodings.Web, Version=10.0.0.0'`.
+- Se añadieron dependencias explícitas en `LivingCompanionsValley.csproj` para forzar las versiones `6.0.0` de `System.Text.Json` y `System.Text.Encodings.Web`, asegurando compatibilidad nativa con Stardew Valley y SMAPI.
