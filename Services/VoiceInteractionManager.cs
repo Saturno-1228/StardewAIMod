@@ -129,10 +129,9 @@ namespace LivingCompanionsValley.Services
 
                     ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
 
-                    // Guardamos la referencia, activamos el estado de interacción y marcamos que estamos grabando
+                    // Guardamos la referencia y activamos el estado de interacción
                     _targetNpc = nearestNpc;
                     _isInteractionActive = true;
-                    _isRecordingVoice = true;
 
                     // Verificar si el NPC está realizando una animación especial (ej. sentado).
                     // Si el sprite tiene una animación actual, evitamos Halt() y facePlayer() para no romperla.
@@ -157,10 +156,13 @@ namespace LivingCompanionsValley.Services
                     // Iniciar grabación de audio
                     if (_waveIn != null && !_isRecordingVoice)
                     {
+                        ModEntry.Logger?.Log("Intentando iniciar la grabación de audio con NAudio...", LogLevel.Trace);
                         _audioMemoryStream = new MemoryStream();
                         try
                         {
                             _waveIn.StartRecording();
+                            _isRecordingVoice = true; // Marcamos que estamos grabando
+                            ModEntry.Logger?.Log("Micrófono grabando activamente.", LogLevel.Debug);
                         }
                         catch (Exception ex)
                         {
@@ -168,6 +170,10 @@ namespace LivingCompanionsValley.Services
                             ReleaseTargetNpc("Error al grabar");
                             return;
                         }
+                    }
+                    else if (_waveIn == null)
+                    {
+                        ModEntry.Logger?.Log("No se puede iniciar grabación: el objeto _waveIn es nulo.", LogLevel.Error);
                     }
                 }
                 else
@@ -267,6 +273,8 @@ namespace LivingCompanionsValley.Services
                         _audioMemoryStream.Dispose();
                         _audioMemoryStream = null;
 
+                        ModEntry.Logger?.Log($"Se detuvo la grabación. Tamaño del buffer capturado: {finalAudioData.Length} bytes.", LogLevel.Trace);
+
                         // Validar si el audio grabado es demasiado corto (ej. toque rápido por error).
                         // Asumiendo formato de 16 bits (2 bytes) a 16kHz, 1 segundo son 32,000 bytes.
                         // 0.5 segundos son 16,000 bytes.
@@ -281,6 +289,14 @@ namespace LivingCompanionsValley.Services
                         string npcName = _targetNpc.Name;
                         Task.Run(() => ProcessAudioAndGetResponseAsync(npcName, finalAudioData));
                     }
+                    else
+                    {
+                        ModEntry.Logger?.Log("Al finalizar la interacción, _audioMemoryStream era nulo. No se capturó audio.", LogLevel.Warn);
+                    }
+                }
+                else
+                {
+                    ModEntry.Logger?.Log("Al soltar la tecla, _waveIn era nulo. No se pudo detener ni procesar audio.", LogLevel.Error);
                 }
             }
         }
