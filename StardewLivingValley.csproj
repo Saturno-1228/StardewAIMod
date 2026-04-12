@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>10</LangVersion>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+    <NoWarn>$(NoWarn);CS9057</NoWarn>
     
     <!-- Asegurar que las librerías NuGet (Whisper.net, etc) se copien a la carpeta del mod -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -14,6 +15,7 @@
     <EnableModZip>true</EnableModZip>
     <EnableModDeploy>true</EnableModDeploy>
   </PropertyGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
