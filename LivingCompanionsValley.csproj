@@ -15,34 +15,28 @@
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
-    <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+    <PackageReference Include="Whisper.net" Version="1.7.3" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.7.3" />
     <PackageReference Include="System.Text.Json" Version="6.0.0" />
     <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
   </ItemGroup>
 
- <ItemGroup>
-  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    <Link>whisper.dll</Link>
-  </Content>
-  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-whisper.dll">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    <Link>ggml-whisper.dll</Link>
-  </Content>
-  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-base-whisper.dll">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    <Link>ggml-base-whisper.dll</Link>
-  </Content>
-  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-cpu-whisper.dll">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    <Link>ggml-cpu-whisper.dll</Link>
-  </Content>
-</ItemGroup>
+  <ItemGroup>
+    <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.7.3\build\win-x64\whisper.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>whisper.dll</Link>
+    </Content>
+  </ItemGroup>
 
   <Target Name="CleanMacOSArtifacts" AfterTargets="Build">
     <Delete Files="$(OutputPath)ggml-metal.metal"
             Condition="Exists('$(OutputPath)ggml-metal.metal')" />
+    <Delete Files="$(OutputPath)ggml-base-whisper.dll"
+            Condition="Exists('$(OutputPath)ggml-base-whisper.dll')" />
+    <Delete Files="$(OutputPath)ggml-cpu-whisper.dll"
+            Condition="Exists('$(OutputPath)ggml-cpu-whisper.dll')" />
+    <Delete Files="$(OutputPath)ggml-whisper.dll"
+            Condition="Exists('$(OutputPath)ggml-whisper.dll')" />
   </Target>
 
 </Project>
