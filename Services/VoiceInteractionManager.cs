@@ -77,8 +77,7 @@ namespace StardewLivingValley.Services
                     // Si ya estábamos hablando con OTRO NPC y no lo hemos liberado, lo liberamos primero
                     if (_targetNpc != null && _targetNpc != nearestNpc)
                     {
-                        ModEntry.Logger?.Log($"Cambiando de objetivo. Liberando a {_targetNpc.Name}...", LogLevel.Debug);
-                        _targetNpc.movementPause = 0;
+                        ReleaseTargetNpc("Cambiando de objetivo.");
                     }
 
                     ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
@@ -88,9 +87,12 @@ namespace StardewLivingValley.Services
                     _isInteractionActive = true;
                     _isRecordingVoice = true;
 
-                    // Respuesta visual inmediata en lugar de esperar hasta el próximo UpdateTicked
-                    _targetNpc.movementPause = 5000;
+                    // Respuesta visual inmediata: detenerlo, mirarnos y pausarlo.
+                    _targetNpc.Halt();
                     _targetNpc.facePlayer(Game1.player);
+                    // Aplicar una pausa inicial. No la renovaremos en UpdateTicked para evitar
+                    // conflictos con el motor de rutas nativo.
+                    _targetNpc.movementPause = 5000;
                 }
                 else
                 {
@@ -130,7 +132,7 @@ namespace StardewLivingValley.Services
         }
 
         /// <summary>
-        /// Verifica las 4 reglas estipuladas para que un NPC sea válido para interactuar.
+        /// Verifica las reglas estipuladas para que un NPC sea válido para interactuar.
         /// </summary>
         private bool IsValidNpc(NPC npc)
         {
@@ -142,9 +144,6 @@ namespace StardewLivingValley.Services
 
             // 3. No debe estar en la lista negra
             if (_npcBlacklist.Contains(npc.Name)) return false;
-
-            // 4. El jugador ya debe haberlo conocido (estar en los datos de amistad)
-            if (Game1.player.friendshipData == null || !Game1.player.friendshipData.ContainsKey(npc.Name)) return false;
 
             return true;
         }
@@ -169,6 +168,24 @@ namespace StardewLivingValley.Services
         }
 
         /// <summary>
+        /// Libera de manera limpia al NPC para que pueda continuar su ruta normal.
+        /// </summary>
+        private void ReleaseTargetNpc(string reason)
+        {
+            if (_targetNpc == null) return;
+
+            ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
+
+            // Le damos una pausa de 1 segundo (similar al nativo) y restauramos la animación
+            _targetNpc.movementPause = 1000;
+            _targetNpc.ClearDirectedAnimation();
+
+            // Limpiamos referencias
+            _isInteractionActive = false;
+            _targetNpc = null;
+        }
+
+        /// <summary>
         /// Evento disparado en cada ciclo de actualización del juego (60 veces por segundo).
         /// </summary>
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
@@ -185,10 +202,7 @@ namespace StardewLivingValley.Services
                 // Condición de Salida: Cambio de locación
                 if (Game1.player.currentLocation != _targetNpc.currentLocation)
                 {
-                    ModEntry.Logger?.Log($"El jugador ha cambiado de locación. Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
-                    _targetNpc.movementPause = 0;
-                    _isInteractionActive = false;
-                    _targetNpc = null;
+                    ReleaseTargetNpc("El jugador ha cambiado de locación.");
                     return;
                 }
 
@@ -197,10 +211,7 @@ namespace StardewLivingValley.Services
                 // Condición de Salida: Alejamiento (Distancia mayor a 6 tiles)
                 if (distance > 6f)
                 {
-                    ModEntry.Logger?.Log($"El jugador se ha alejado de {_targetNpc.Name}. Finalizando interacción.", LogLevel.Debug);
-                    _targetNpc.movementPause = 0; // Liberamos al NPC
-                    _isInteractionActive = false;
-                    _targetNpc = null;
+                    ReleaseTargetNpc($"El jugador se ha alejado de {_targetNpc.Name}.");
                     return;
                 }
 
@@ -211,17 +222,14 @@ namespace StardewLivingValley.Services
                     double timeSinceLastInteraction = Game1.currentGameTime.TotalGameTime.TotalSeconds - _lastInteractionTime;
                     if (timeSinceLastInteraction > 15.0)
                     {
-                        ModEntry.Logger?.Log($"Tiempo de espera superado (15s) con {_targetNpc.Name}. Finalizando interacción.", LogLevel.Debug);
-                        _targetNpc.movementPause = 0; // Liberamos al NPC
-                        _isInteractionActive = false;
-                        _targetNpc = null;
+                        ReleaseTargetNpc($"Tiempo de espera superado (15s) con {_targetNpc.Name}.");
                         return;
                     }
                 }
 
-                // Mantener al NPC detenido y mirándonos pacientemente
-                _targetNpc.movementPause = 5000; // Pausa de 5 segundos, renovada constantemente
-                _targetNpc.facePlayer(Game1.player);
+                // Ya no renovamos el _targetNpc.movementPause = 5000 aquí.
+                // Permitimos que la pausa inicial persista para que al final el motor nativo la recupere.
+                // Si la pausa expira, simplemente se quedarán cerca pero no se congelarán permanentemente.
             }
         }
     }
