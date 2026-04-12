@@ -8,11 +8,10 @@ namespace StardewLivingValley.Configuration
     /// </summary>
     public class SecretConfig
     {
-        // Ejemplo comentado:
-        // [JsonIgnore] no se usaría aquí si queremos serializar/deserializar el JSON secreto con SMAPI,
-        // más bien confiamos en que .gitignore evite que este archivo suba al control de versiones.
-
-        // public string VeniceApiKey { get; set; } = "";
+        /// <summary>
+        /// La clave API de Venice AI para autenticar las peticiones.
+        /// </summary>
+        public string VeniceApiKey { get; set; } = "";
 
         public SecretConfig()
         {
