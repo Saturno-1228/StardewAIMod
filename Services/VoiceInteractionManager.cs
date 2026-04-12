@@ -113,6 +113,14 @@ namespace LivingCompanionsValley.Services
                         ReleaseTargetNpc("Cambiando de objetivo.");
                     }
 
+                    // Validación crucial: Si el micrófono falló al inicializarse, no podemos continuar.
+                    if (_microphone == null)
+                    {
+                        ModEntry.Logger?.Log("ERROR CRÍTICO: Intento de grabar voz fallido. El micrófono no está disponible. Interacción abortada.", LogLevel.Error);
+                        Game1.addHUDMessage(new HUDMessage("Error: Micrófono no detectado", HUDMessage.error_type));
+                        return;
+                    }
+
                     ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
 
                     // Guardamos la referencia, activamos el estado de interacción y marcamos que estamos grabando
@@ -137,7 +145,8 @@ namespace LivingCompanionsValley.Services
                     
                     // Congelar al NPC usando la propiedad nativa del motor (detiene los pies y el movimiento)
                     // sin corromper el horario como lo hace movementPause, ni fallar visualmente como speed.
-                    _targetNpc.freezeMotion = true;
+                    // Se usa Reflection de SMAPI porque 'freezeMotion' es un campo protegido.
+                    _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(true);
                     
                     // Iniciar grabación de audio
                     if (_microphone != null && _microphone.State == MicrophoneState.Stopped)
@@ -233,7 +242,7 @@ namespace LivingCompanionsValley.Services
                         // 0.5 segundos son 16,000 bytes.
                         if (finalAudioData.Length < 16000)
                         {
-                            ModEntry.Logger?.Log($"[INFO] Grabación demasiado corta ({finalAudioData.Length} bytes, menos de 0.5s). Cancelando interacción por toque accidental.", LogLevel.Info);
+                            ModEntry.Logger?.Log($"Grabación demasiado corta ({finalAudioData.Length} bytes, menos de 0.5s). Cancelando interacción por toque accidental.", LogLevel.Info);
                             ReleaseTargetNpc("Interacción cancelada (grabación corta).");
                             return;
                         }
@@ -250,14 +259,14 @@ namespace LivingCompanionsValley.Services
         {
             try
             {
-                ModEntry.Logger?.Log($"[INFO] Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
+                ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
                 
                 // Convertir PCM 16-bit a Float 32-bit (16kHz asumido)
                 float[] floatAudio = ConvertPcm16ToFloat(audioData);
-                ModEntry.Logger?.Log($"[INFO] Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Info);
+                ModEntry.Logger?.Log($"Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Info);
 
                 // 1. Transcribir audio
-                ModEntry.Logger?.Log("[INFO] Llamando a Whisper para transcribir...", LogLevel.Info);
+                ModEntry.Logger?.Log("Llamando a Whisper para transcribir...", LogLevel.Info);
                 string transcription = await _whisperService.TranscribeAudioAsync(floatAudio);
 
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
@@ -267,13 +276,13 @@ namespace LivingCompanionsValley.Services
                     return;
                 }
 
-                ModEntry.Logger?.Log($"[INFO] Usuario dijo (Transcrito): {transcription}", LogLevel.Info);
+                ModEntry.Logger?.Log($"Usuario dijo (Transcrito): {transcription}", LogLevel.Info);
 
                 // 2. Obtener respuesta de Venice
-                ModEntry.Logger?.Log("[INFO] Llamando a Venice API para obtener respuesta...", LogLevel.Info);
+                ModEntry.Logger?.Log("Llamando a Venice API para obtener respuesta...", LogLevel.Info);
                 string npcResponse = await _veniceApiService.GetNpcResponseAsync(npcName, transcription);
 
-                ModEntry.Logger?.Log($"[INFO] {npcName} responde: {npcResponse}", LogLevel.Info);
+                ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Info);
 
                 // 3. Mostrar la respuesta en la UI principal
                 ShowBubble(npcName, npcResponse);
@@ -323,7 +332,7 @@ namespace LivingCompanionsValley.Services
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
             
             // Liberamos el congelamiento nativo para que el NPC retome su ruta y animaciones
-            _targetNpc.freezeMotion = false;
+            _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(false);
 
             // Limpiamos referencias
             _isInteractionActive = false;
