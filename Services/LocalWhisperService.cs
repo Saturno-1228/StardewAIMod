@@ -45,7 +45,7 @@ namespace StardewLivingValley.Services
                         Directory.CreateDirectory(dir);
                     }
 
-                    using var modelStream = await WhisperGgmlDownloader.GetDefaultDownloader().GetGgmlModelAsync(GgmlType.Base);
+                    using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(GgmlType.Base);
                     using var fileWriter = File.OpenWrite(_modelPath);
                     await modelStream.CopyToAsync(fileWriter);
 
