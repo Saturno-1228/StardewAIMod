@@ -122,4 +122,5 @@ Este apartado compila y refina todas las metas arquitectónicas y mecánicas dis
 Soy tu usuario. Revisa continuamente esta sección "Master Design Document" antes de generar código. Me gusta la inmersión, el balance y no romper el gameplay core de Stardew. Antes de diseñar una nueva característica técnica, pregúntame siempre: *"¿Crees que esta forma rompe la inmersión? ¿Se te ocurre una manera más fluida de integrarlo al juego?"*
 
 ## 🐛 PROBLEMAS CONOCIDOS / NOTAS TÉCNICAS
-*(Vacío por ahora)*
+- **Control de Movimiento del NPC (Halt & Face):** Interrumpir el `PathFindController` de un NPC o sobrescribir su horario para que se detengan a hablar puede romper su ciclo diario permanentemente.
+  - *Solución confirmada:* En lugar de destruir rutinas, utilizaremos la propiedad nativa `npc.movementPause = 5000;` (5 segundos) renovada periódicamente (ej. cada 30 ticks mediante `UpdateTicked`) mientras el jugador mantiene presionado el Push-to-Talk. Esto detiene al NPC de forma segura y se auto-resuelve sin causar bugs en el código base del juego.
