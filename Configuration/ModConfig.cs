@@ -1,6 +1,6 @@
 using StardewModdingAPI;
 
-namespace StardewLivingValley.Configuration
+namespace LivingCompanionsValley.Configuration
 {
     /// <summary>
     /// Configuraciones generales del mod, accesibles por el jugador.

@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI.Events;
 using StardewValley;
-using StardewLivingValley.Configuration;
+using LivingCompanionsValley.Configuration;
 
-namespace StardewLivingValley.Services
+namespace LivingCompanionsValley.Services
 {
     /// <summary>
     /// Gestiona las interacciones de voz del jugador, interceptando la tecla configurada (Push-to-Talk)
