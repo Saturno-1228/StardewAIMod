@@ -21,13 +21,24 @@
     <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Copiar whisper.dll nativo (win-x64) al output para que SMAPI lo despliegue -->
-    <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>whisper.dll</Link>
-    </Content>
-  </ItemGroup>
+ <ItemGroup>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>whisper.dll</Link>
+  </Content>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>ggml-whisper.dll</Link>
+  </Content>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-base-whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>ggml-base-whisper.dll</Link>
+  </Content>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.8.1\build\win-x64\ggml-cpu-whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>ggml-cpu-whisper.dll</Link>
+  </Content>
+</ItemGroup>
 
   <Target Name="CleanMacOSArtifacts" AfterTargets="Build">
     <Delete Files="$(OutputPath)ggml-metal.metal"
