@@ -17,6 +17,9 @@ namespace StardewLivingValley.Services
         private readonly IModHelper _helper;
         private readonly ModConfig _config;
 
+        private NPC? _targetNpc;
+        private bool _isInteractionActive;
+
         /// <summary>
         /// Lista de NPCs que nunca deben ser contactados mediante el mod de IA.
         /// </summary>
@@ -47,6 +50,7 @@ namespace StardewLivingValley.Services
             // Suscribirse a los eventos de presión y liberación de botones
             _helper.Events.Input.ButtonPressed += OnButtonPressed;
             _helper.Events.Input.ButtonReleased += OnButtonReleased;
+            _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         }
 
         /// <summary>
@@ -68,11 +72,11 @@ namespace StardewLivingValley.Services
 
                 if (nearestNpc != null)
                 {
-                    ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Deteniendo e interactuando...", LogLevel.Debug);
+                    ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
 
-                    // Detener al NPC de su ruta actual y hacer que mire al jugador
-                    nearestNpc.Halt();
-                    nearestNpc.facePlayer(Game1.player);
+                    // Guardamos la referencia y activamos el estado de interacción
+                    _targetNpc = nearestNpc;
+                    _isInteractionActive = true;
                 }
                 else
                 {
@@ -140,7 +144,38 @@ namespace StardewLivingValley.Services
             // Solo actuar si el botón soltado coincide con el configurado
             if (e.Button == _config.VoiceKey)
             {
-                ModEntry.Logger?.Log("Captura finalizada.", LogLevel.Debug);
+                ModEntry.Logger?.Log("Captura de voz finalizada. Procesando (el NPC espera)...", LogLevel.Debug);
+                // Nota: No limpiamos _isInteractionActive aquí. El NPC seguirá esperando
+                // hasta que nos alejemos o (en el futuro) termine de hablar la IA.
+            }
+        }
+
+        /// <summary>
+        /// Evento disparado en cada ciclo de actualización del juego (60 veces por segundo).
+        /// </summary>
+        private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
+        {
+            if (!_isInteractionActive || _targetNpc == null)
+                return;
+
+            // Optimización: Solo ejecutar la lógica 2 veces por segundo (cada 30 ticks)
+            if (e.IsMultipleOf(30))
+            {
+                float distance = Vector2.Distance(Game1.player.Tile, _targetNpc.Tile);
+
+                // Si el jugador se aleja a más de 6 tiles, cancelamos la interacción
+                if (distance > 6f)
+                {
+                    ModEntry.Logger?.Log($"El jugador se ha alejado de {_targetNpc.Name}. Finalizando interacción.", LogLevel.Debug);
+                    _targetNpc.movementPause = 0; // Liberamos al NPC
+                    _isInteractionActive = false;
+                    _targetNpc = null;
+                    return;
+                }
+
+                // Mantener al NPC detenido y mirándonos pacientemente
+                _targetNpc.movementPause = 5000; // Pausa de 5 segundos, renovada constantemente
+                _targetNpc.facePlayer(Game1.player);
             }
         }
     }

@@ -93,7 +93,8 @@ Hasta el momento, si compilas e instalas el mod en el juego, esto es exactamente
   - [x] **1.2 Captura de Eventos Básica:** Se conectaron los eventos de SMAPI (`ButtonPressed` y `ButtonReleased`) para escuchar `VoiceKey` (SButton.Tab por defecto configurable en `ModConfig`).
   - [x] **1.3 Mock de Grabación (Logs):** Se implementaron mensajes "Iniciando captura de voz..." y "Captura finalizada." con `LogLevel.Debug`.
   - [x] **1.4 Filtro y Búsqueda de NPC:** Se añadió la búsqueda en un radio de 3 tiles. Se implementó una cuádruple validación: Es aldeano, puede socializar, el jugador ya lo conoció, y **NO** está en una `NpcBlacklist` explícita (para proteger mecánicas con NPCs de historia o decorativos).
-  - [x] **1.5 Halt & Face:** Al encontrar un NPC válido, se ejecuta `.Halt()` y `.facePlayer(Game1.player)`.
+  - [x] **1.5 Halt & Face Mejorado (Push-To-Talk y Pausa de Rutina):** Se arregló el bug donde el NPC ignoraba el `.Halt()` debido a su "Schedule" interno. Ahora, al presionar TAB, el NPC obtiene un `movementPause = 5000` (renovado 2 veces por segundo en `UpdateTicked`).
+  - [x] **1.6 Condición de Distancia para Liberar:** Al soltar TAB el NPC se queda "esperando". Solo retoma su rutina si el jugador se aleja a más de 6 tiles de distancia, dándole tiempo a la futura IA de procesar la respuesta sin que el NPC dé la espalda.
 
 ### ⏳ Fases Futuras
 - [ ] Fase 2: Integrar y probar Whisper.net de forma offline (reemplazar logs por captura real del `Microphone`).
@@ -108,9 +109,10 @@ Este apartado compila y refina todas las metas arquitectónicas y mecánicas dis
 
 ### 1. Sistema Híbrido de Interfaz y Manejo del Tiempo (UI/UX)
 **Objetivo:** Evitar que el jugador sufra interrupciones abruptas por la latencia de las llamadas a API (Whisper/Venice).
-- **Interacción Casual (Burbujas en tiempo real):** Al usar Push-to-talk de paso, el juego **NO se pausa**. El jugador sigue farmeando. La respuesta se mostrará usando `SpeechBubbles` flotantes sobre la cabeza del NPC.
-  - *Manejo de Textos Largos:* Si la IA genera un párrafo extenso, el código C# cortará la cadena usando los puntos finales (`.`) y rotará las burbujas cada ~3 segundos para dar tiempo a leer.
-- **Conversación Profunda (Lock-in):** Si el jugador "interactúa" formalmente (clic derecho) con el NPC para charlar, se usará el `DialogueBox` clásico (con los retratos grandes). **Aquí el juego sí se pausa** permitiendo charlas profundas e inmersivas.
+- **Interacción Casual (Burbujas en tiempo real - Push-To-Talk con TAB):** Al usar Push-to-talk de paso, el juego **NO se pausa**. El NPC interrumpe su rutina usando `movementPause`. Al soltar TAB, aparecerán puntitos animados (`...`) en una pequeña burbuja indicando "pensamiento". La respuesta se mostrará usando `SpeechBubbles` flotantes.
+  - *Manejo de Textos Largos (Paginación):* Si la IA genera un párrafo extenso, el código C# cortará la cadena usando los puntos finales (`.`) y rotará las burbujas secuencialmente de forma fluida.
+  - *Condición de Salida Orgánica:* El NPC no se irá inmediatamente después de la última burbuja. Solo se irá si el jugador explícitamente se despide, se aleja (>6 tiles), o si se le ordena explícitamente "esperar".
+- **Conversación Profunda (Lock-in - Clic Derecho):** Si el jugador "interactúa" formalmente con el NPC, se usará el `DialogueBox` clásico (con los retratos grandes). **Aquí el juego sí se pausa** permitiendo charlas profundas e inmersivas, inyectando puntitos de "..." animando dentro de la caja nativa mientras se espera a la IA.
 
 ### 2. Arquitectura de Machine Learning Local (Offline & Rápida)
 **Objetivo:** Reducir gasto de tokens en Venice API, acelerar respuestas y permitir lógicas complejas offline.
