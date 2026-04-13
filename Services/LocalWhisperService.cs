@@ -19,10 +19,8 @@ namespace LivingCompanionsValley.Services
 
         public LocalWhisperService(IModHelper helper)
         {
-            // Ruta del modelo en la carpeta de assets
             _modelPath = Path.Combine(helper.DirectoryPath, "Assets", "ggml-base.bin");
 
-            // Suscribirse a las excepciones no controladas del AppDomain para registrar crash nativos
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 ModEntry.Logger?.Log($"[CRASH NATIVO WHISPER] {e.ExceptionObject}", LogLevel.Error);
@@ -38,19 +36,16 @@ namespace LivingCompanionsValley.Services
 
             try
             {
-                // Si el modelo no existe, se descarga
                 if (!File.Exists(_modelPath))
                 {
-                    ModEntry.Logger?.Log("El modelo Whisper no se encontró en la carpeta de Assets. Descargando ggml-base.bin (puede tardar un momento)...", LogLevel.Info);
+                    ModEntry.Logger?.Log("El modelo Whisper no se encontró. Descargando ggml-base.bin...", LogLevel.Info);
 
-                    // Asegurarse de que el directorio exista
                     string? dir = Path.GetDirectoryName(_modelPath);
                     if (dir != null && !Directory.Exists(dir))
-                    {
                         Directory.CreateDirectory(dir);
-                    }
 
-                    using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(GgmlType.Base);
+                    // ✅ Fix: new WhisperGgmlDownloader() en lugar de WhisperGgmlDownloader.Default
+                    using var modelStream = await new WhisperGgmlDownloader().GetGgmlModelAsync(GgmlType.Base);
                     using var fileWriter = File.OpenWrite(_modelPath);
                     await modelStream.CopyToAsync(fileWriter);
 
@@ -71,7 +66,7 @@ namespace LivingCompanionsValley.Services
         /// <summary>
         /// Transcribe un buffer de audio de 32-bit floats a texto.
         /// </summary>
-        [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
+        // ✅ Fix: eliminado [HandleProcessCorruptedStateExceptions] obsoleto en .NET 6
         public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
         {
             if (!_isInitialized || _factory == null)
@@ -80,20 +75,17 @@ namespace LivingCompanionsValley.Services
                 return "[Error] Whisper no está inicializado.";
             }
 
-            // Timeout de 15 segundos para evitar que Whisper se quede colgado
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
 
             try
             {
-                ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper para transcribir...", LogLevel.Info);
+                ModEntry.Logger?.Log($"Enviando {floatAudioBuffer.Length} muestras de audio a Whisper...", LogLevel.Info);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                // Forzar ejecución en ThreadPool, fuera del hilo de MonoGame
                 string finalTrimmedText = await Task.Run(async () =>
                 {
                     ModEntry.Logger?.Log("Creando processor efímero de Whisper.net...", LogLevel.Trace);
 
-                    // El processor maneja estado interno nativo y NO es thread-safe ni reusable.
                     await using var processor = _factory.CreateBuilder()
                         .WithLanguage("es")
                         .WithNoContext()
@@ -106,7 +98,7 @@ namespace LivingCompanionsValley.Services
                     await foreach (var segment in processor.ProcessAsync(floatAudioBuffer, cts.Token))
                     {
                         sb.Append(segment.Text);
-                        ModEntry.Logger?.Log($"Segmento transcrito detectado: '{segment.Text}'", LogLevel.Trace);
+                        ModEntry.Logger?.Log($"Segmento transcrito: '{segment.Text}'", LogLevel.Trace);
                     }
 
                     return sb.ToString().Trim();
@@ -114,13 +106,13 @@ namespace LivingCompanionsValley.Services
                 }, cts.Token).ConfigureAwait(false);
 
                 stopwatch.Stop();
-                ModEntry.Logger?.Log($"Whisper devolvió el texto '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
+                ModEntry.Logger?.Log($"Whisper devolvió '{finalTrimmedText}' en {stopwatch.ElapsedMilliseconds}ms.", LogLevel.Info);
 
                 return finalTrimmedText;
             }
             catch (OperationCanceledException)
             {
-                ModEntry.Logger?.Log("[Error] Tiempo de espera agotado (15s) al transcribir con Whisper. Posible cuelgue del modelo.", LogLevel.Error);
+                ModEntry.Logger?.Log("[Error] Timeout (15s) al transcribir con Whisper.", LogLevel.Error);
                 return "[Error] Tiempo de espera agotado al transcribir.";
             }
             catch (AccessViolationException ex)
@@ -135,7 +127,7 @@ namespace LivingCompanionsValley.Services
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error al transcribir el audio con Whisper: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error al transcribir: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
                 return "[Error] Excepción en transcripción de Whisper.";
             }
         }
