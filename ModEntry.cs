@@ -4,6 +4,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using LivingCompanionsValley.Configuration;
 using LivingCompanionsValley.Services;
+using Whisper.net;
 
 namespace LivingCompanionsValley
 {
@@ -15,9 +16,6 @@ namespace LivingCompanionsValley
         private SecretConfig? _secretConfig;
         private VoiceInteractionManager? _voiceManager;
         private VeniceApiService? _veniceApiService;
-
-        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetDllDirectory(string lpPathName);
 
         public override void Entry(IModHelper helper)
         {
@@ -55,13 +53,45 @@ namespace LivingCompanionsValley
         {
             var modDir = helper.DirectoryPath;
 
-            if (SetDllDirectory(modDir))
+            try
             {
-                Logger?.Log($"[Whisper] DLL search path configurado: {modDir}", LogLevel.Info);
+                var whisperAssembly = typeof(WhisperFactory).Assembly;
+
+                System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(
+                    whisperAssembly,
+                    (libraryName, assembly, searchPath) =>
+                    {
+                        var candidates = new[]
+                        {
+                            Path.Combine(modDir, $"{libraryName}.dll"),
+                            Path.Combine(modDir, libraryName),
+                        };
+
+                        foreach (var candidate in candidates)
+                        {
+                            if (File.Exists(candidate))
+                            {
+                                if (System.Runtime.InteropServices.NativeLibrary.TryLoad(candidate, out var handle))
+                                {
+                                    Logger?.Log($"[Whisper] Resuelto '{libraryName}' -> {Path.GetFileName(candidate)}", LogLevel.Info);
+                                    return handle;
+                                }
+                            }
+                        }
+
+                        Logger?.Log($"[Whisper] No resuelto: '{libraryName}'", LogLevel.Warn);
+                        return IntPtr.Zero;
+                    });
+
+                Logger?.Log("[Whisper] DllImportResolver configurado.", LogLevel.Info);
             }
-            else
+            catch (InvalidOperationException)
             {
-                Logger?.Log("[Whisper] No se pudo configurar DLL search path.", LogLevel.Warn);
+                Logger?.Log("[Whisper] Resolver ya existía — Whisper.net se inicializó antes de Entry().", LogLevel.Warn);
+            }
+            catch (Exception ex)
+            {
+                Logger?.Log($"[Whisper] Error configurando resolver: {ex.Message}", LogLevel.Error);
             }
         }
     }
