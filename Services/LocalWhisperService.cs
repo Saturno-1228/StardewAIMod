@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using StardewModdingAPI;
@@ -15,7 +14,10 @@ namespace LivingCompanionsValley.Services
         private readonly string _modelPath;
         private readonly string _modDirectory;
         private bool _isInitialized;
-        private static bool _resolverRegistered = false;
+        
+        // Punteros para liberar la memoria después
+        private IntPtr _ggmlHandle = IntPtr.Zero;
+        private IntPtr _whisperHandle = IntPtr.Zero;
 
         public LocalWhisperService(IModHelper helper)
         {
@@ -27,18 +29,8 @@ namespace LivingCompanionsValley.Services
                 ModEntry.Logger?.Log($"[CRASH NATIVO WHISPER] {e.ExceptionObject}", LogLevel.Error);
             };
 
-            // 1. LA FUERZA BRUTA: METODOLOGÍA B (Inyección de Entorno)
-            // Esto soluciona que "whisper.dll" (C++) no encuentre a "ggml-whisper.dll" (C++)
+            // Inyectamos la ruta en el PATH global de Windows para que las DLLs se vean entre sí
             InjectDirectoryIntoPath();
-
-            // 2. EL BISTURÍ: METODOLOGÍA C (Interceptor de C# a C++)
-            // Esto soluciona que el contexto de SMAPI no encuentre "whisper.dll"
-            if (!_resolverRegistered)
-            {
-                NativeLibrary.SetDllImportResolver(typeof(WhisperFactory).Assembly, WhisperDllImportResolver);
-                _resolverRegistered = true;
-                ModEntry.Logger?.Log("DllImportResolver de .NET registrado con éxito.", LogLevel.Info);
-            }
         }
 
         private void InjectDirectoryIntoPath()
@@ -46,13 +38,11 @@ namespace LivingCompanionsValley.Services
             try
             {
                 string pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
-                
-                // Si la ruta del mod no está en el PATH de Windows, la forzamos al PRINCIPIO
                 if (!pathVar.Contains(_modDirectory))
                 {
                     string newPath = _modDirectory + Path.PathSeparator + pathVar;
                     Environment.SetEnvironmentVariable("PATH", newPath);
-                    ModEntry.Logger?.Log($"[Victoria] Directorio del mod forzado en la variable PATH del sistema operativo.", LogLevel.Info);
+                    ModEntry.Logger?.Log($"[Victoria] Directorio del mod forzado en la variable PATH del sistema operativo.", LogLevel.Trace);
                 }
             }
             catch (Exception ex)
@@ -61,39 +51,51 @@ namespace LivingCompanionsValley.Services
             }
         }
 
-        private IntPtr WhisperDllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        /// <summary>
+        /// Carga las librerías a la fuerza en la RAM del juego antes de que Whisper las pida.
+        /// </summary>
+        private void ForceLoadNativeLibrariesToRam()
         {
-            // Atrapamos cualquier petición que contenga "whisper"
-            if (libraryName.Contains("whisper", StringComparison.OrdinalIgnoreCase))
-            {
-                string absoluteWhisperPath = Path.Combine(_modDirectory, "whisper.dll");
-                string absoluteGgmlPath = Path.Combine(_modDirectory, "ggml-whisper.dll");
+            string ggmlPath = Path.Combine(_modDirectory, "ggml-whisper.dll");
+            string whisperPath = Path.Combine(_modDirectory, "whisper.dll");
 
+            ModEntry.Logger?.Log("Iniciando inyección manual de librerías nativas en la RAM...", LogLevel.Info);
+
+            // 1. OBLIGATORIO: Cargar GGML primero (dependencia matemática)
+            if (File.Exists(ggmlPath))
+            {
                 try
                 {
-                    // 1. Obligamos a cargar la dependencia matemática (GGML) en la memoria primero
-                    if (File.Exists(absoluteGgmlPath))
-                    {
-                        ModEntry.Logger?.Log("Interceptor: Precargando ggml-whisper.dll en memoria...", LogLevel.Trace);
-                        NativeLibrary.TryLoad(absoluteGgmlPath, out _); 
-                    }
-
-                    // 2. Entregamos el motor base (whisper.dll) de forma absoluta
-                    if (File.Exists(absoluteWhisperPath))
-                    {
-                        ModEntry.Logger?.Log($"Interceptor: Forzando carga absoluta de {absoluteWhisperPath}...", LogLevel.Trace);
-                        if (NativeLibrary.TryLoad(absoluteWhisperPath, out IntPtr handle))
-                        {
-                            return handle;
-                        }
-                    }
+                    _ggmlHandle = NativeLibrary.Load(ggmlPath);
+                    ModEntry.Logger?.Log("-> ggml-whisper.dll inyectado en RAM exitosamente.", LogLevel.Info);
                 }
                 catch (Exception ex)
                 {
-                    ModEntry.Logger?.Log($"Error interno en el DllImportResolver: {ex.Message}", LogLevel.Error);
+                    ModEntry.Logger?.Log($"-> FALLO al inyectar ggml-whisper.dll: {ex.Message}", LogLevel.Error);
                 }
             }
-            return IntPtr.Zero;
+            else
+            {
+                ModEntry.Logger?.Log($"-> ERROR CRÍTICO: No se encontró físicamente el archivo {ggmlPath}", LogLevel.Error);
+            }
+
+            // 2. Cargar Whisper (depende de GGML)
+            if (File.Exists(whisperPath))
+            {
+                try
+                {
+                    _whisperHandle = NativeLibrary.Load(whisperPath);
+                    ModEntry.Logger?.Log("-> whisper.dll inyectado en RAM exitosamente.", LogLevel.Info);
+                }
+                catch (Exception ex)
+                {
+                    ModEntry.Logger?.Log($"-> FALLO al inyectar whisper.dll: {ex.Message}", LogLevel.Error);
+                }
+            }
+            else
+            {
+                ModEntry.Logger?.Log($"-> ERROR CRÍTICO: No se encontró físicamente el archivo {whisperPath}", LogLevel.Error);
+            }
         }
 
         public async Task InitializeAsync()
@@ -117,9 +119,11 @@ namespace LivingCompanionsValley.Services
                     ModEntry.Logger?.Log("Modelo descargado exitosamente.", LogLevel.Info);
                 }
 
+                // INYECCIÓN DE FUERZA BRUTA EN RAM ANTES DE LLAMAR A LA FÁBRICA
+                ForceLoadNativeLibrariesToRam();
+
                 ModEntry.Logger?.Log("Inicializando modelo de Whisper local (Factory)...", LogLevel.Trace);
                 
-                // ¡AQUÍ ES LA HORA DE LA VERDAD!
                 _factory = WhisperFactory.FromPath(_modelPath);
                 
                 _isInitialized = true;
@@ -185,6 +189,8 @@ namespace LivingCompanionsValley.Services
         public void Dispose()
         {
             _factory?.Dispose();
+            if (_whisperHandle != IntPtr.Zero) NativeLibrary.Free(_whisperHandle);
+            if (_ggmlHandle != IntPtr.Zero) NativeLibrary.Free(_ggmlHandle);
         }
     }
 }
