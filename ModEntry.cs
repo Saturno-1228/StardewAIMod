@@ -16,6 +16,9 @@ namespace LivingCompanionsValley
         private VoiceInteractionManager? _voiceManager;
         private VeniceApiService? _veniceApiService;
 
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetDllDirectory(string lpPathName);
+
         public override void Entry(IModHelper helper)
         {
             Logger = this.Monitor;
@@ -51,25 +54,14 @@ namespace LivingCompanionsValley
         private void PreloadNativeWhisper(IModHelper helper)
         {
             var modDir = helper.DirectoryPath;
-            var dlls = new[] { "ggml-whisper.dll", "whisper.dll" };
 
-            foreach (var dllName in dlls)
+            if (SetDllDirectory(modDir))
             {
-                var fullPath = Path.Combine(modDir, dllName);
-                try
-                {
-                    if (!File.Exists(fullPath))
-                    {
-                        Logger?.Log($"[Whisper] No encontrado: {dllName}", LogLevel.Warn);
-                        continue;
-                    }
-                    System.Runtime.InteropServices.NativeLibrary.Load(fullPath);
-                    Logger?.Log($"[Whisper] Cargado: {dllName}", LogLevel.Info);
-                }
-                catch (Exception ex)
-                {
-                    Logger?.Log($"[Whisper] Error cargando {dllName}: {ex.Message}", LogLevel.Warn);
-                }
+                Logger?.Log($"[Whisper] DLL search path configurado: {modDir}", LogLevel.Info);
+            }
+            else
+            {
+                Logger?.Log("[Whisper] No se pudo configurar DLL search path.", LogLevel.Warn);
             }
         }
     }

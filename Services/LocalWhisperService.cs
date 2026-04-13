@@ -54,7 +54,7 @@ namespace LivingCompanionsValley.Services
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error al inicializar Whisper: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error al inicializar Whisper: {ex}", LogLevel.Error);
             }
         }
 
