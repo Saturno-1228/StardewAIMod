@@ -48,6 +48,7 @@ namespace LivingCompanionsValley.Services
                 }
 
                 ModEntry.Logger?.Log("Inicializando Whisper...", LogLevel.Trace);
+                RuntimeOptions.Instance.SetBypassLoading(true);
                 _factory = WhisperFactory.FromPath(_modelPath);
                 _isInitialized = true;
                 ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Trace);
