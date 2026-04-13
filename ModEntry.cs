@@ -1,10 +1,10 @@
 using System;
 using System.IO;
+using System.Diagnostics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using LivingCompanionsValley.Configuration;
 using LivingCompanionsValley.Services;
-using Whisper.net;
 
 namespace LivingCompanionsValley
 {
@@ -26,8 +26,10 @@ namespace LivingCompanionsValley
                 Logger?.Log($"[CRASH NO CONTROLADO] {e.ExceptionObject}", LogLevel.Error);
             };
 
-            PreloadNativeWhisper(helper);
+            // 1. Asegurar que las librerías nativas estén accesibles
+            EnsureNativeLibs(helper);
 
+            // 2. Configurar servicios
             _config = helper.ReadConfig<ModConfig>();
             _secretConfig = helper.Data.ReadJsonFile<SecretConfig>("SecretConfig.json") ?? new SecretConfig();
 
@@ -47,51 +49,46 @@ namespace LivingCompanionsValley
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
+            // Espacio para futuras fases.
         }
 
-        private void PreloadNativeWhisper(IModHelper helper)
+        /// <summary>
+        /// Copia las librerías nativas al directorio raíz del juego para que el SO las encuentre.
+        /// </summary>
+        private void EnsureNativeLibs(IModHelper helper)
         {
             var modDir = helper.DirectoryPath;
+            // El directorio base es donde está StardewValley.exe
+            var gameDir = AppDomain.CurrentDomain.BaseDirectory; 
 
-            try
+            var libs = new[] { "ggml-whisper.dll", "whisper.dll" };
+
+            foreach (var lib in libs)
             {
-                var whisperAssembly = typeof(WhisperFactory).Assembly;
+                var source = Path.Combine(modDir, lib);
+                var dest = Path.Combine(gameDir, lib);
 
-                System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(
-                    whisperAssembly,
-                    (libraryName, assembly, searchPath) =>
+                if (File.Exists(source))
+                {
+                    try
                     {
-                        var candidates = new[]
+                        // Copiar si el destino no existe o es más antiguo
+                        if (!File.Exists(dest) || File.GetLastWriteTime(source) > File.GetLastWriteTime(dest))
                         {
-                            Path.Combine(modDir, $"{libraryName}.dll"),
-                            Path.Combine(modDir, libraryName),
-                        };
-
-                        foreach (var candidate in candidates)
-                        {
-                            if (File.Exists(candidate))
-                            {
-                                if (System.Runtime.InteropServices.NativeLibrary.TryLoad(candidate, out var handle))
-                                {
-                                    Logger?.Log($"[Whisper] Resuelto '{libraryName}' -> {Path.GetFileName(candidate)}", LogLevel.Info);
-                                    return handle;
-                                }
-                            }
+                            File.Copy(source, dest, overwrite: true);
+                            Logger?.Log($"[Whisper] Copiado {lib} a directorio del juego.", LogLevel.Info);
                         }
-
-                        Logger?.Log($"[Whisper] No resuelto: '{libraryName}'", LogLevel.Warn);
-                        return IntPtr.Zero;
-                    });
-
-                Logger?.Log("[Whisper] DllImportResolver configurado.", LogLevel.Info);
-            }
-            catch (InvalidOperationException)
-            {
-                Logger?.Log("[Whisper] Resolver ya existía — Whisper.net se inicializó antes de Entry().", LogLevel.Warn);
-            }
-            catch (Exception ex)
-            {
-                Logger?.Log($"[Whisper] Error configurando resolver: {ex.Message}", LogLevel.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.Log($"[Whisper] Error copiando {lib} (posible falta de permisos): {ex.Message}", LogLevel.Error);
+                        Logger?.Log($"[Whisper] Solución: Ejecuta Steam como Administrador o copia manualmente {lib} a {gameDir}", LogLevel.Error);
+                    }
+                }
+                else
+                {
+                    Logger?.Log($"[Whisper] No se encontró {lib} en el mod. Verifica la compilación.", LogLevel.Warn);
+                }
             }
         }
     }
