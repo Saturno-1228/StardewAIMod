@@ -44,8 +44,8 @@ namespace LivingCompanionsValley.Services
                     if (dir != null && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
 
-                    // ✅ Fix: new WhisperGgmlDownloader() en lugar de WhisperGgmlDownloader.Default
-                    using var modelStream = await new WhisperGgmlDownloader().GetGgmlModelAsync(GgmlType.Base);
+                    // ✅ Clase estática, se llama directamente sin instanciar
+                    using var modelStream = await WhisperGgmlDownloader.GetGgmlModelAsync(GgmlType.Base);
                     using var fileWriter = File.OpenWrite(_modelPath);
                     await modelStream.CopyToAsync(fileWriter);
 
@@ -66,7 +66,6 @@ namespace LivingCompanionsValley.Services
         /// <summary>
         /// Transcribe un buffer de audio de 32-bit floats a texto.
         /// </summary>
-        // ✅ Fix: eliminado [HandleProcessCorruptedStateExceptions] obsoleto en .NET 6
         public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
         {
             if (!_isInitialized || _factory == null)
