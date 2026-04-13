@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using StardewModdingAPI;
 using Whisper.net;
 using Whisper.net.Ggml;
+using Whisper.net.Runtime;
 
 namespace LivingCompanionsValley.Services
 {

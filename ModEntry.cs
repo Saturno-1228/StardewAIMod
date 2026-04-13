@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using LivingCompanionsValley.Configuration;
@@ -8,8 +5,14 @@ using LivingCompanionsValley.Services;
 
 namespace LivingCompanionsValley
 {
+    /// <summary>
+    /// El punto de entrada principal para el mod Living Companions Valley.
+    /// </summary>
     public class ModEntry : Mod
     {
+        /// <summary>
+        /// Instancia estática del Logger para uso global en la aplicación.
+        /// </summary>
         internal static IMonitor? Logger { get; private set; }
 
         private ModConfig? _config;
@@ -17,86 +20,46 @@ namespace LivingCompanionsValley
         private VoiceInteractionManager? _voiceManager;
         private VeniceApiService? _veniceApiService;
 
-        // Importación para añadir el directorio del mod a la búsqueda de DLLs de Windows
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool SetDllDirectory(string lpPathName);
-
+        /// <summary>
+        /// El método de entrada invocado por SMAPI.
+        /// </summary>
+        /// <param name="helper">Proporciona métodos simplificados para interactuar con SMAPI.</param>
         public override void Entry(IModHelper helper)
         {
+            // Guardar referencia del monitor para ser usada globalmente
             Logger = this.Monitor;
 
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            {
-                Logger?.Log($"[CRASH NO CONTROLADO] {e.ExceptionObject}", LogLevel.Error);
-            };
-
-            // 1. Configurar búsqueda de DLLs en el directorio del mod
-            var modDir = helper.DirectoryPath;
-            SetDllDirectory(modDir);
-            Logger?.Log($"[Whisper] Ruta de búsqueda de DLLs configurada: {modDir}", LogLevel.Info);
-
-            // 2. Cargar manualmente las librerías nativas
-            LoadNativeLibraries(modDir);
-
-            // 3. Inicializar servicios
+            // Cargar configuración pública
             _config = helper.ReadConfig<ModConfig>();
+
+            // Cargar configuración secreta manualmente usando Data API
             _secretConfig = helper.Data.ReadJsonFile<SecretConfig>("SecretConfig.json") ?? new SecretConfig();
 
+            // Si la key está vacía, guardamos el archivo para que el usuario pueda editarlo
             if (string.IsNullOrWhiteSpace(_secretConfig.VeniceApiKey))
             {
                 helper.Data.WriteJsonFile("SecretConfig.json", _secretConfig);
-                Logger.Log("Se ha creado 'SecretConfig.json'. Añade tu Venice API Key.", LogLevel.Warn);
+                Logger!.Log("Se ha creado 'SecretConfig.json'. Por favor, añade tu Venice API Key en ese archivo.", LogLevel.Warn);
             }
 
+            // Inicializar servicios principales
             _veniceApiService = new VeniceApiService(_secretConfig.VeniceApiKey);
             _voiceManager = new VoiceInteractionManager(helper, _config, _veniceApiService);
 
-            Logger.Log("Living Companions Valley loaded successfully.", LogLevel.Info);
+            // Log de inicio exitoso
+            Logger!.Log("Living Companions Valley loaded successfully.", LogLevel.Info);
 
+            // Preparación de eventos base
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
         }
 
         /// <summary>
-        /// Carga explícita de las DLLs nativas para evitar errores de resolución.
+        /// Evento que se dispara después de que el juego es lanzado.
+        /// Ideal para cargar APIs externas, GenericModConfigMenu, etc.
         /// </summary>
-        private void LoadNativeLibraries(string modDir)
-        {
-            // El orden es vital: ggml (implementación) antes que whisper (API)
-            var libs = new[] { "ggml-whisper.dll", "whisper.dll" };
-
-            foreach (var lib in libs)
-            {
-                var path = Path.Combine(modDir, lib);
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        var handle = NativeLibrary.Load(path);
-                        Logger?.Log($"[Whisper] Cargado con éxito: {lib}", LogLevel.Info);
-                    }
-                    catch (DllNotFoundException)
-                    {
-                        Logger?.Log($"[Whisper] ERROR CRÍTICO: Falta una dependencia para {lib}.", LogLevel.Error);
-                        Logger?.Log("Instala 'Visual C++ Redistributable 2015-2022 x64' desde microsoft.com", LogLevel.Error);
-                    }
-                    catch (BadImageFormatException)
-                    {
-                        Logger?.Log($"[Whisper] ERROR: {lib} es de arquitectura incorrecta (necesitas x64).", LogLevel.Error);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.Log($"[Whisper] Error desconocido cargando {lib}: {ex.Message}", LogLevel.Error);
-                    }
-                }
-                else
-                {
-                    Logger?.Log($"[Whisper] Archivo no encontrado: {lib}", LogLevel.Warn);
-                }
-            }
-        }
-
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
+            // Espacio preparado para futuras fases.
         }
     }
 }
