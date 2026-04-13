@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using StardewModdingAPI;
 using Whisper.net;
-using Whisper.net.Ggml;
 
 namespace LivingCompanionsValley.Services
 {
@@ -18,6 +17,10 @@ namespace LivingCompanionsValley.Services
         // Punteros para liberar la memoria después
         private IntPtr _ggmlHandle = IntPtr.Zero;
         private IntPtr _whisperHandle = IntPtr.Zero;
+
+        // Mantener una referencia estática al resolver para evitar que el Garbage Collector lo elimine
+        private static DllImportResolver? _resolver;
+        private static bool _resolverRegistered;
 
         public LocalWhisperService(IModHelper helper)
         {
@@ -48,6 +51,39 @@ namespace LivingCompanionsValley.Services
             catch (Exception ex)
             {
                 ModEntry.Logger?.Log($"Error al modificar el PATH: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        private void RegisterDllImportResolver()
+        {
+            if (_resolverRegistered) return;
+
+            try
+            {
+                _resolver = (libraryName, assembly, searchPath) =>
+                {
+                    if (libraryName.Contains("whisper", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string whisperPath = Path.Combine(_modDirectory, "whisper.dll");
+                        if (File.Exists(whisperPath))
+                        {
+                            ModEntry.Logger?.Log($"[DllImportResolver] Interceptada petición de '{libraryName}'. Entregando ruta directa: {whisperPath}", LogLevel.Trace);
+                            if (NativeLibrary.TryLoad(whisperPath, out IntPtr handle))
+                            {
+                                return handle;
+                            }
+                        }
+                    }
+                    return IntPtr.Zero; // Deja que el comportamiento predeterminado maneje otras librerías
+                };
+
+                NativeLibrary.SetDllImportResolver(typeof(WhisperFactory).Assembly, _resolver);
+                _resolverRegistered = true;
+                ModEntry.Logger?.Log("[DllImportResolver] Custom resolver registrado exitosamente en Whisper.net.", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"[DllImportResolver] Error al registrar el resolver: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -98,6 +134,40 @@ namespace LivingCompanionsValley.Services
             }
         }
 
+        private void EnsureFallbackPhysicalStructure()
+        {
+            try
+            {
+                // Whisper.net a menudo busca en runtimes/win-x64/native/
+                string runtimesPath = Path.Combine(_modDirectory, "runtimes", "win-x64", "native");
+                if (!Directory.Exists(runtimesPath))
+                {
+                    Directory.CreateDirectory(runtimesPath);
+                    ModEntry.Logger?.Log($"[Plan B] Estructura de carpetas creada: {runtimesPath}", LogLevel.Trace);
+                }
+
+                string sourceWhisper = Path.Combine(_modDirectory, "whisper.dll");
+                string destWhisper = Path.Combine(runtimesPath, "whisper.dll");
+                if (File.Exists(sourceWhisper) && !File.Exists(destWhisper))
+                {
+                    File.Copy(sourceWhisper, destWhisper, true);
+                    ModEntry.Logger?.Log("[Plan B] whisper.dll copiado a la estructura runtimes.", LogLevel.Trace);
+                }
+
+                string sourceGgml = Path.Combine(_modDirectory, "ggml-whisper.dll");
+                string destGgml = Path.Combine(runtimesPath, "ggml-whisper.dll");
+                if (File.Exists(sourceGgml) && !File.Exists(destGgml))
+                {
+                    File.Copy(sourceGgml, destGgml, true);
+                    ModEntry.Logger?.Log("[Plan B] ggml-whisper.dll copiado a la estructura runtimes.", LogLevel.Trace);
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"[Plan B] Error al recrear estructura física: {ex.Message}", LogLevel.Warn);
+            }
+        }
+
         public async Task InitializeAsync()
         {
             if (_isInitialized) return;
@@ -106,25 +176,32 @@ namespace LivingCompanionsValley.Services
             {
                 if (!File.Exists(_modelPath))
                 {
-                    ModEntry.Logger?.Log("El modelo Whisper no se encontró. Descargando ggml-base.bin...", LogLevel.Info);
-
-                    string? dir = Path.GetDirectoryName(_modelPath);
-                    if (dir != null && !Directory.Exists(dir))
-                        Directory.CreateDirectory(dir);
-
-                    using var modelStream = await WhisperGgmlDownloader.GetGgmlModelAsync(GgmlType.Base);
-                    using var fileWriter = File.OpenWrite(_modelPath);
-                    await modelStream.CopyToAsync(fileWriter);
-
-                    ModEntry.Logger?.Log("Modelo descargado exitosamente.", LogLevel.Info);
+                    ModEntry.Logger?.Log("[ERROR CRÍTICO] El modelo Whisper no se encontró físicamente en la carpeta Assets. Por favor, descarga 'ggml-base.bin' manualmente y colócalo en 'Assets/ggml-base.bin' para activar el reconocimiento de voz local.", LogLevel.Error);
+                    return; // Abort initialization if model is missing
                 }
 
-                // INYECCIÓN DE FUERZA BRUTA EN RAM ANTES DE LLAMAR A LA FÁBRICA
+                // 1. Estrategia del Resolver para interceptar P/Invoke
+                RegisterDllImportResolver();
+
+                // 2. Estrategia de Plan B: Recrear estructura de directorios
+                EnsureFallbackPhysicalStructure();
+
+                // 3. INYECCIÓN DE FUERZA BRUTA EN RAM ANTES DE LLAMAR A LA FÁBRICA
                 ForceLoadNativeLibrariesToRam();
 
                 ModEntry.Logger?.Log("Inicializando modelo de Whisper local (Factory)...", LogLevel.Trace);
                 
-                _factory = WhisperFactory.FromPath(_modelPath);
+                // 4. Estrategia Extrema: Cambiar temporalmente el CurrentDirectory
+                string originalDir = Environment.CurrentDirectory;
+                try
+                {
+                    Environment.CurrentDirectory = _modDirectory;
+                    _factory = WhisperFactory.FromPath(_modelPath);
+                }
+                finally
+                {
+                    Environment.CurrentDirectory = originalDir;
+                }
                 
                 _isInitialized = true;
                 ModEntry.Logger?.Log("Whisper inicializado correctamente. ¡Hemos triunfado!", LogLevel.Info);

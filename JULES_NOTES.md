@@ -176,3 +176,5 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Arreglado bug lógico en `VoiceInteractionManager.cs` que impedía que NAudio comenzara la captura del micrófono debido a un cambio de estado anticipado de `_isRecordingVoice`.
 - Añadidos logs de diagnóstico adicionales para rastrear correctamente el ciclo de vida de la grabación de voz y detectar posibles problemas con nulos o capturas vacías.
 - **Corregido:** Añadido timeout de 15 segundos mediante `CancellationTokenSource` y `try-catch` en `LocalWhisperService.cs` (`TranscribeAudioAsync`) para evitar que Whisper.net se cuelgue silenciosamente, además de añadir logs adicionales durante el procesamiento de cada segmento.
+- Modified LocalWhisperService.cs to implement a multi-layered native library bypass (Resolver + Fallback folder + CurrentDir context) to fix Whisper.net load errors under SMAPI.
+- Removed WhisperGgmlDownloader network code to prevent freezes and unauthorized downloads. Users must provide ggml-base.bin manually in Assets/.
