@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using StardewModdingAPI;
 using Whisper.net;
@@ -7,29 +8,68 @@ using Whisper.net.Ggml;
 
 namespace LivingCompanionsValley.Services
 {
-    /// <summary>
-    /// Servicio que envuelve la lógica asíncrona de Whisper.net para transcripción offline.
-    /// Descarga automáticamente el modelo la primera vez que se necesita.
-    /// </summary>
     public class LocalWhisperService : IDisposable
     {
         private WhisperFactory? _factory;
         private readonly string _modelPath;
+        private readonly string _modDirectory;
         private bool _isInitialized;
+
+        // --- IMPORTACIONES DE KERNEL32 (METODOLOGÍA A) ---
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool SetDefaultDllDirectories(uint DirectoryFlags);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr AddDllDirectory(string lpPathName);
+
+        private const uint LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000;
+        private const uint LOAD_LIBRARY_SEARCH_USER_DIRS = 0x00000400;
 
         public LocalWhisperService(IModHelper helper)
         {
-            _modelPath = Path.Combine(helper.DirectoryPath, "Assets", "ggml-base.bin");
+            _modDirectory = helper.DirectoryPath;
+            _modelPath = Path.Combine(_modDirectory, "Assets", "ggml-base.bin");
 
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 ModEntry.Logger?.Log($"[CRASH NATIVO WHISPER] {e.ExceptionObject}", LogLevel.Error);
             };
+
+            // INYECCIÓN DIRECTA AL SISTEMA OPERATIVO ANTES DE QUE WHISPER RESPIRE
+            InjectNativeDirectory();
         }
 
-        /// <summary>
-        /// Inicializa el procesador de Whisper (descargando el modelo si no existe).
-        /// </summary>
+        private void InjectNativeDirectory()
+        {
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    ModEntry.Logger?.Log("Interviniendo Kernel32 para inyectar el directorio del mod en el PATH dinámico de Windows...", LogLevel.Trace);
+                    
+                    // Inicializar banderas de seguridad requeridas por Windows
+                    SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS);
+
+                    // Añadir la raíz de nuestro mod al buscador del sistema
+                    IntPtr cookie = AddDllDirectory(_modDirectory);
+
+                    if (cookie == IntPtr.Zero)
+                    {
+                        int errorCode = Marshal.GetLastWin32Error();
+                        ModEntry.Logger?.Log($"[ADVERTENCIA] AddDllDirectory devolvió 0. Código de error Win32: {errorCode}", LogLevel.Warn);
+                    }
+                    else
+                    {
+                        ModEntry.Logger?.Log($"Directorio nativo inyectado con éxito en Kernel32: {_modDirectory}", LogLevel.Info);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"Error al intentar inyectar directorios nativos: {ex.Message}", LogLevel.Error);
+            }
+        }
+
         public async Task InitializeAsync()
         {
             if (_isInitialized) return;
@@ -44,7 +84,6 @@ namespace LivingCompanionsValley.Services
                     if (dir != null && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
 
-                    // ✅ Clase estática, se llama directamente sin instanciar
                     using var modelStream = await WhisperGgmlDownloader.GetGgmlModelAsync(GgmlType.Base);
                     using var fileWriter = File.OpenWrite(_modelPath);
                     await modelStream.CopyToAsync(fileWriter);
@@ -53,19 +92,20 @@ namespace LivingCompanionsValley.Services
                 }
 
                 ModEntry.Logger?.Log("Inicializando modelo de Whisper local (Factory)...", LogLevel.Trace);
+                
+                // Con el directorio inyectado en Windows, el NativeLibraryLoader interno de Whisper
+                // y el cargador de PE de Windows encontrarán la DLL y sus dependencias sin problema.
                 _factory = WhisperFactory.FromPath(_modelPath);
+                
                 _isInitialized = true;
-                ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Trace);
+                ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error crítico al inicializar Whisper.net: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error crítico al inicializar Whisper.net: {ex.Message}\nStack: {ex.StackTrace}", LogLevel.Error);
             }
         }
 
-        /// <summary>
-        /// Transcribe un buffer de audio de 32-bit floats a texto.
-        /// </summary>
         public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
         {
             if (!_isInitialized || _factory == null)
@@ -83,16 +123,12 @@ namespace LivingCompanionsValley.Services
 
                 string finalTrimmedText = await Task.Run(async () =>
                 {
-                    ModEntry.Logger?.Log("Creando processor efímero de Whisper.net...", LogLevel.Trace);
-
                     await using var processor = _factory.CreateBuilder()
                         .WithLanguage("es")
                         .WithNoContext()
                         .Build();
 
                     var sb = new System.Text.StringBuilder();
-
-                    ModEntry.Logger?.Log("Iniciando ProcessAsync con Whisper.net...", LogLevel.Trace);
 
                     await foreach (var segment in processor.ProcessAsync(floatAudioBuffer, cts.Token))
                     {
@@ -113,16 +149,6 @@ namespace LivingCompanionsValley.Services
             {
                 ModEntry.Logger?.Log("[Error] Timeout (15s) al transcribir con Whisper.", LogLevel.Error);
                 return "[Error] Tiempo de espera agotado al transcribir.";
-            }
-            catch (AccessViolationException ex)
-            {
-                ModEntry.Logger?.Log($"[CRASH NATIVO] AccessViolation en Whisper: {ex}", LogLevel.Error);
-                return "[Error] Crash de memoria al transcribir.";
-            }
-            catch (System.Runtime.InteropServices.SEHException ex)
-            {
-                ModEntry.Logger?.Log($"[CRASH NATIVO] SEHException en Whisper: {ex}", LogLevel.Error);
-                return "[Error] Fallo interno del motor Whisper.";
             }
             catch (Exception ex)
             {
