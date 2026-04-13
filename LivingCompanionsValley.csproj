@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -22,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Copiar DLLs nativos a la carpeta de salida del mod -->
     <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.7.3\build\win-x64\ggml-whisper.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>ggml-whisper.dll</Link>
@@ -33,14 +31,9 @@
     </Content>
   </ItemGroup>
 
-  <!-- Solo eliminar artefactos de macOS, NO los de Windows -->
   <Target Name="CleanMacOSArtifacts" AfterTargets="Build">
-    <Delete Files="$(OutputPath)ggml-metal.metal"
-            Condition="Exists('$(OutputPath)ggml-metal.metal')" />
-    <Delete Files="$(OutputPath)ggml-base-whisper.dll"
-            Condition="Exists('$(OutputPath)ggml-base-whisper.dll')" />
-    <Delete Files="$(OutputPath)ggml-cpu-whisper.dll"
-            Condition="Exists('$(OutputPath)ggml-cpu-whisper.dll')" />
+    <Delete Files="$(OutputPath)ggml-metal.metal" Condition="Exists('$(OutputPath)ggml-metal.metal')" />
+    <Delete Files="$(OutputPath)ggml-base-whisper.dll" Condition="Exists('$(OutputPath)ggml-base-whisper.dll')" />
+    <Delete Files="$(OutputPath)ggml-cpu-whisper.dll" Condition="Exists('$(OutputPath)ggml-cpu-whisper.dll')" />
   </Target>
-
 </Project>

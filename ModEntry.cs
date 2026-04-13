@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Diagnostics;
+using System.Runtime.InteropServices;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using LivingCompanionsValley.Configuration;
@@ -17,6 +17,10 @@ namespace LivingCompanionsValley
         private VoiceInteractionManager? _voiceManager;
         private VeniceApiService? _veniceApiService;
 
+        // Importación para añadir el directorio del mod a la búsqueda de DLLs de Windows
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool SetDllDirectory(string lpPathName);
+
         public override void Entry(IModHelper helper)
         {
             Logger = this.Monitor;
@@ -26,10 +30,15 @@ namespace LivingCompanionsValley
                 Logger?.Log($"[CRASH NO CONTROLADO] {e.ExceptionObject}", LogLevel.Error);
             };
 
-            // 1. Asegurar que las librerías nativas estén accesibles
-            EnsureNativeLibs(helper);
+            // 1. Configurar búsqueda de DLLs en el directorio del mod
+            var modDir = helper.DirectoryPath;
+            SetDllDirectory(modDir);
+            Logger?.Log($"[Whisper] Ruta de búsqueda de DLLs configurada: {modDir}", LogLevel.Info);
 
-            // 2. Configurar servicios
+            // 2. Cargar manualmente las librerías nativas
+            LoadNativeLibraries(modDir);
+
+            // 3. Inicializar servicios
             _config = helper.ReadConfig<ModConfig>();
             _secretConfig = helper.Data.ReadJsonFile<SecretConfig>("SecretConfig.json") ?? new SecretConfig();
 
@@ -47,49 +56,47 @@ namespace LivingCompanionsValley
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
         }
 
-        private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
-        {
-            // Espacio para futuras fases.
-        }
-
         /// <summary>
-        /// Copia las librerías nativas al directorio raíz del juego para que el SO las encuentre.
+        /// Carga explícita de las DLLs nativas para evitar errores de resolución.
         /// </summary>
-        private void EnsureNativeLibs(IModHelper helper)
+        private void LoadNativeLibraries(string modDir)
         {
-            var modDir = helper.DirectoryPath;
-            // El directorio base es donde está StardewValley.exe
-            var gameDir = AppDomain.CurrentDomain.BaseDirectory; 
-
+            // El orden es vital: ggml (implementación) antes que whisper (API)
             var libs = new[] { "ggml-whisper.dll", "whisper.dll" };
 
             foreach (var lib in libs)
             {
-                var source = Path.Combine(modDir, lib);
-                var dest = Path.Combine(gameDir, lib);
-
-                if (File.Exists(source))
+                var path = Path.Combine(modDir, lib);
+                if (File.Exists(path))
                 {
                     try
                     {
-                        // Copiar si el destino no existe o es más antiguo
-                        if (!File.Exists(dest) || File.GetLastWriteTime(source) > File.GetLastWriteTime(dest))
-                        {
-                            File.Copy(source, dest, overwrite: true);
-                            Logger?.Log($"[Whisper] Copiado {lib} a directorio del juego.", LogLevel.Info);
-                        }
+                        var handle = NativeLibrary.Load(path);
+                        Logger?.Log($"[Whisper] Cargado con éxito: {lib}", LogLevel.Info);
+                    }
+                    catch (DllNotFoundException)
+                    {
+                        Logger?.Log($"[Whisper] ERROR CRÍTICO: Falta una dependencia para {lib}.", LogLevel.Error);
+                        Logger?.Log("Instala 'Visual C++ Redistributable 2015-2022 x64' desde microsoft.com", LogLevel.Error);
+                    }
+                    catch (BadImageFormatException)
+                    {
+                        Logger?.Log($"[Whisper] ERROR: {lib} es de arquitectura incorrecta (necesitas x64).", LogLevel.Error);
                     }
                     catch (Exception ex)
                     {
-                        Logger?.Log($"[Whisper] Error copiando {lib} (posible falta de permisos): {ex.Message}", LogLevel.Error);
-                        Logger?.Log($"[Whisper] Solución: Ejecuta Steam como Administrador o copia manualmente {lib} a {gameDir}", LogLevel.Error);
+                        Logger?.Log($"[Whisper] Error desconocido cargando {lib}: {ex.Message}", LogLevel.Error);
                     }
                 }
                 else
                 {
-                    Logger?.Log($"[Whisper] No se encontró {lib} en el mod. Verifica la compilación.", LogLevel.Warn);
+                    Logger?.Log($"[Whisper] Archivo no encontrado: {lib}", LogLevel.Warn);
                 }
             }
+        }
+
+        private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
+        {
         }
     }
 }
