@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using StardewModdingAPI;
@@ -14,16 +15,7 @@ namespace LivingCompanionsValley.Services
         private readonly string _modelPath;
         private readonly string _modDirectory;
         private bool _isInitialized;
-
-        // --- IMPORTACIONES DE KERNEL32 (METODOLOGÍA A) ---
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern bool SetDefaultDllDirectories(uint DirectoryFlags);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr AddDllDirectory(string lpPathName);
-
-        private const uint LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000;
-        private const uint LOAD_LIBRARY_SEARCH_USER_DIRS = 0x00000400;
+        private static bool _resolverRegistered = false;
 
         public LocalWhisperService(IModHelper helper)
         {
@@ -35,39 +27,73 @@ namespace LivingCompanionsValley.Services
                 ModEntry.Logger?.Log($"[CRASH NATIVO WHISPER] {e.ExceptionObject}", LogLevel.Error);
             };
 
-            // INYECCIÓN DIRECTA AL SISTEMA OPERATIVO ANTES DE QUE WHISPER RESPIRE
-            InjectNativeDirectory();
+            // 1. LA FUERZA BRUTA: METODOLOGÍA B (Inyección de Entorno)
+            // Esto soluciona que "whisper.dll" (C++) no encuentre a "ggml-whisper.dll" (C++)
+            InjectDirectoryIntoPath();
+
+            // 2. EL BISTURÍ: METODOLOGÍA C (Interceptor de C# a C++)
+            // Esto soluciona que el contexto de SMAPI no encuentre "whisper.dll"
+            if (!_resolverRegistered)
+            {
+                NativeLibrary.SetDllImportResolver(typeof(WhisperFactory).Assembly, WhisperDllImportResolver);
+                _resolverRegistered = true;
+                ModEntry.Logger?.Log("DllImportResolver de .NET registrado con éxito.", LogLevel.Info);
+            }
         }
 
-        private void InjectNativeDirectory()
+        private void InjectDirectoryIntoPath()
         {
             try
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                string pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
+                
+                // Si la ruta del mod no está en el PATH de Windows, la forzamos al PRINCIPIO
+                if (!pathVar.Contains(_modDirectory))
                 {
-                    ModEntry.Logger?.Log("Interviniendo Kernel32 para inyectar el directorio del mod en el PATH dinámico de Windows...", LogLevel.Trace);
-                    
-                    // Inicializar banderas de seguridad requeridas por Windows
-                    SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS);
-
-                    // Añadir la raíz de nuestro mod al buscador del sistema
-                    IntPtr cookie = AddDllDirectory(_modDirectory);
-
-                    if (cookie == IntPtr.Zero)
-                    {
-                        int errorCode = Marshal.GetLastWin32Error();
-                        ModEntry.Logger?.Log($"[ADVERTENCIA] AddDllDirectory devolvió 0. Código de error Win32: {errorCode}", LogLevel.Warn);
-                    }
-                    else
-                    {
-                        ModEntry.Logger?.Log($"Directorio nativo inyectado con éxito en Kernel32: {_modDirectory}", LogLevel.Info);
-                    }
+                    string newPath = _modDirectory + Path.PathSeparator + pathVar;
+                    Environment.SetEnvironmentVariable("PATH", newPath);
+                    ModEntry.Logger?.Log($"[Victoria] Directorio del mod forzado en la variable PATH del sistema operativo.", LogLevel.Info);
                 }
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Error al intentar inyectar directorios nativos: {ex.Message}", LogLevel.Error);
+                ModEntry.Logger?.Log($"Error al modificar el PATH: {ex.Message}", LogLevel.Error);
             }
+        }
+
+        private IntPtr WhisperDllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        {
+            // Atrapamos cualquier petición que contenga "whisper"
+            if (libraryName.Contains("whisper", StringComparison.OrdinalIgnoreCase))
+            {
+                string absoluteWhisperPath = Path.Combine(_modDirectory, "whisper.dll");
+                string absoluteGgmlPath = Path.Combine(_modDirectory, "ggml-whisper.dll");
+
+                try
+                {
+                    // 1. Obligamos a cargar la dependencia matemática (GGML) en la memoria primero
+                    if (File.Exists(absoluteGgmlPath))
+                    {
+                        ModEntry.Logger?.Log("Interceptor: Precargando ggml-whisper.dll en memoria...", LogLevel.Trace);
+                        NativeLibrary.TryLoad(absoluteGgmlPath, out _); 
+                    }
+
+                    // 2. Entregamos el motor base (whisper.dll) de forma absoluta
+                    if (File.Exists(absoluteWhisperPath))
+                    {
+                        ModEntry.Logger?.Log($"Interceptor: Forzando carga absoluta de {absoluteWhisperPath}...", LogLevel.Trace);
+                        if (NativeLibrary.TryLoad(absoluteWhisperPath, out IntPtr handle))
+                        {
+                            return handle;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModEntry.Logger?.Log($"Error interno en el DllImportResolver: {ex.Message}", LogLevel.Error);
+                }
+            }
+            return IntPtr.Zero;
         }
 
         public async Task InitializeAsync()
@@ -93,12 +119,11 @@ namespace LivingCompanionsValley.Services
 
                 ModEntry.Logger?.Log("Inicializando modelo de Whisper local (Factory)...", LogLevel.Trace);
                 
-                // Con el directorio inyectado en Windows, el NativeLibraryLoader interno de Whisper
-                // y el cargador de PE de Windows encontrarán la DLL y sus dependencias sin problema.
+                // ¡AQUÍ ES LA HORA DE LA VERDAD!
                 _factory = WhisperFactory.FromPath(_modelPath);
                 
                 _isInitialized = true;
-                ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Info);
+                ModEntry.Logger?.Log("Whisper inicializado correctamente. ¡Hemos triunfado!", LogLevel.Info);
             }
             catch (Exception ex)
             {
