@@ -33,7 +33,7 @@ namespace LivingCompanionsValley
             if (string.IsNullOrWhiteSpace(_secretConfig.VeniceApiKey))
             {
                 helper.Data.WriteJsonFile("SecretConfig.json", _secretConfig);
-                Logger.Log("Se ha creado 'SecretConfig.json'. Añade tu Venice API Key en ese archivo.", LogLevel.Warn);
+                Logger.Log("Se ha creado 'SecretConfig.json'. Añade tu Venice API Key.", LogLevel.Warn);
             }
 
             _veniceApiService = new VeniceApiService(_secretConfig.VeniceApiKey);
@@ -46,30 +46,31 @@ namespace LivingCompanionsValley
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
-            // Espacio preparado para futuras fases.
         }
 
         private void PreloadNativeWhisper(IModHelper helper)
-{
-    var modDir = helper.DirectoryPath;
-    var dlls = new[] { "ggml-whisper.dll", "whisper.dll" };
+        {
+            var modDir = helper.DirectoryPath;
+            var dlls = new[] { "ggml-whisper.dll", "whisper.dll" };
 
-    foreach (var dllName in dlls)
-    {
-        var fullPath = Path.Combine(modDir, dllName);
-        try
-        {
-            if (!File.Exists(fullPath))
+            foreach (var dllName in dlls)
             {
-                Logger?.Log($"[Whisper] No encontrado: {dllName}", LogLevel.Warn);
-                continue;
+                var fullPath = Path.Combine(modDir, dllName);
+                try
+                {
+                    if (!File.Exists(fullPath))
+                    {
+                        Logger?.Log($"[Whisper] No encontrado: {dllName}", LogLevel.Warn);
+                        continue;
+                    }
+                    System.Runtime.InteropServices.NativeLibrary.Load(fullPath);
+                    Logger?.Log($"[Whisper] Cargado: {dllName}", LogLevel.Info);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.Log($"[Whisper] Error cargando {dllName}: {ex.Message}", LogLevel.Warn);
+                }
             }
-            System.Runtime.InteropServices.NativeLibrary.Load(fullPath);
-            Logger?.Log($"[Whisper] Cargado: {dllName}", LogLevel.Info);
-        }
-        catch (Exception ex)
-        {
-            Logger?.Log($"[Whisper] Error cargando {dllName}: {ex.Message}", LogLevel.Warn);
         }
     }
 }
