@@ -22,11 +22,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.7.3\build\win-x64\whisper.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>whisper.dll</Link>
-    </Content>
-  </ItemGroup>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.7.3\build\win-x64\ggml-whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>ggml-whisper.dll</Link>
+  </Content>
+  <Content Include="$(NuGetPackageRoot)whisper.net.runtime\1.7.3\build\win-x64\whisper.dll">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Link>whisper.dll</Link>
+  </Content>
+</ItemGroup>
 
   <Target Name="CleanMacOSArtifacts" AfterTargets="Build">
     <Delete Files="$(OutputPath)ggml-metal.metal"

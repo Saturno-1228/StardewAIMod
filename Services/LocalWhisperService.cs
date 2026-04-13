@@ -37,8 +37,7 @@ namespace LivingCompanionsValley.Services
                     if (dir != null && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
 
-                    using var modelStream = await WhisperGgmlDownloader.Default
-                        .GetGgmlModelAsync(GgmlType.Base);
+                    using var modelStream = await WhisperGgmlDownloader.GetGgmlModelAsync(GgmlType.Base);
                     using var fileWriter = File.OpenWrite(_modelPath);
                     await modelStream.CopyToAsync(fileWriter);
 
@@ -59,7 +58,6 @@ namespace LivingCompanionsValley.Services
             }
         }
 
-        [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
         public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
         {
             if (!_isInitialized || _factory == null)
