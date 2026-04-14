@@ -178,3 +178,11 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - **Corregido:** Añadido timeout de 15 segundos mediante `CancellationTokenSource` y `try-catch` en `LocalWhisperService.cs` (`TranscribeAudioAsync`) para evitar que Whisper.net se cuelgue silenciosamente, además de añadir logs adicionales durante el procesamiento de cada segmento.
 - Modified LocalWhisperService.cs to implement a multi-layered native library bypass (Resolver + Fallback folder + CurrentDir context) to fix Whisper.net load errors under SMAPI.
 - Removed WhisperGgmlDownloader network code to prevent freezes and unauthorized downloads. Users must provide ggml-base.bin manually in Assets/.
+
+## Completed Actions
+- Purged all code and packages related to Whisper.net and its native binaries.
+- Integrated Vosk NuGet package and updated `LivingCompanionsValley.csproj` to extract and flatten `libvosk.dll` correctly.
+- Created `LocalVoskService.cs` using an exact native interceptor for `libvosk` (`NativeLibrary.SetDllImportResolver`).
+- Adjusted model verification to expect a directory structure (`Assets/vosk-model-small-es`).
+- Adjusted `.csproj` MSBuild targets to gracefully ignore MacOS artifacts cleanup since they were specific to Whisper.
+- Refactored `VoiceInteractionManager.cs` to pass raw 16-bit PCM `byte[]` audio to Vosk, deleting NAudio's float[] conversion routines and handling the Vosk `JsonDocument` text property parsing reliably.

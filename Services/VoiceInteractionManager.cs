@@ -21,7 +21,7 @@ namespace LivingCompanionsValley.Services
         private readonly IModHelper _helper;
         private readonly ModConfig _config;
         private readonly VeniceApiService _veniceApiService;
-        private readonly LocalWhisperService _whisperService;
+        private readonly LocalVoskService _voskService;
 
         private NPC? _targetNpc;
         private bool _isInteractionActive;
@@ -61,10 +61,10 @@ namespace LivingCompanionsValley.Services
             _helper = helper;
             _config = config;
             _veniceApiService = veniceApiService;
-            _whisperService = new LocalWhisperService(helper);
+            _voskService = new LocalVoskService(helper);
 
-            // Inicializar Whisper.net en background
-            Task.Run(async () => await _whisperService.InitializeAsync());
+            // Inicializar Vosk.net en background
+            Task.Run(async () => await _voskService.InitializeAsync());
 
             // Inicializar Micrófono con NAudio
             try
@@ -307,13 +307,9 @@ namespace LivingCompanionsValley.Services
             {
                 ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
                 
-                // Convertir PCM 16-bit a Float 32-bit (16kHz asumido)
-                float[] floatAudio = ConvertPcm16ToFloat(audioData);
-                ModEntry.Logger?.Log($"Audio convertido a {floatAudio.Length} muestras float.", LogLevel.Info);
-
                 // 1. Transcribir audio
-                ModEntry.Logger?.Log("Llamando a Whisper para transcribir...", LogLevel.Info);
-                string transcription = await _whisperService.TranscribeAudioAsync(floatAudio);
+                ModEntry.Logger?.Log("Llamando a Vosk para transcribir...", LogLevel.Info);
+                string transcription = await _voskService.TranscribeAudioAsync(audioData);
 
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
                 {
@@ -354,18 +350,6 @@ namespace LivingCompanionsValley.Services
                     }
                 }
             });
-        }
-
-        private float[] ConvertPcm16ToFloat(byte[] pcmData)
-        {
-            int numSamples = pcmData.Length / 2;
-            float[] floatData = new float[numSamples];
-            for (int i = 0; i < numSamples; i++)
-            {
-                short sample = BitConverter.ToInt16(pcmData, i * 2);
-                floatData[i] = sample / 32768f;
-            }
-            return floatData;
         }
 
         /// <summary>
