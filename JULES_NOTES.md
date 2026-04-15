@@ -186,3 +186,4 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Adjusted model verification to expect a directory structure (`Assets/vosk-model-small-es`).
 - Adjusted `.csproj` MSBuild targets to gracefully ignore MacOS artifacts cleanup since they were specific to Whisper.
 - Refactored `VoiceInteractionManager.cs` to pass raw 16-bit PCM `byte[]` audio to Vosk, deleting NAudio's float[] conversion routines and handling the Vosk `JsonDocument` text property parsing reliably.
+- [X] Refinamiento UI/UX - Fase 1: Paginación de Burbujas y Ajuste de Modelo (VeniceApiService & VoiceInteractionManager)

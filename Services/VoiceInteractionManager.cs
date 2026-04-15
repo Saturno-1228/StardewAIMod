@@ -28,6 +28,10 @@ namespace LivingCompanionsValley.Services
         private bool _isRecordingVoice;
         private double _lastInteractionTime;
 
+        private ConcurrentQueue<string> _speechQueue = new ConcurrentQueue<string>();
+        private double _bubbleTimer = 0;
+        private bool _isWaitingForApi;
+
         // Microphone state using NAudio
         private WaveInEvent? _waveIn;
         private MemoryStream? _audioMemoryStream;
@@ -307,14 +311,18 @@ namespace LivingCompanionsValley.Services
             {
                 ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
                 
+                _isWaitingForApi = true;
+
                 // 1. Transcribir audio
                 ModEntry.Logger?.Log("Llamando a Vosk para transcribir...", LogLevel.Info);
                 string transcription = await _voskService.TranscribeAudioAsync(audioData);
 
+                ShowBubble(npcName, "...");
+
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
                 {
                     ModEntry.Logger?.Log($"La transcripción fue nula, vacía o devolvió error: '{transcription}'. Cancelando llamado a Venice.", LogLevel.Debug);
-                    ShowBubble(npcName, "...");
+                    _isWaitingForApi = false;
                     return;
                 }
 
@@ -327,13 +335,78 @@ namespace LivingCompanionsValley.Services
                 ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Info);
 
                 // 3. Mostrar la respuesta en la UI principal
-                ShowBubble(npcName, npcResponse);
+                var chunks = SplitTextIntoChunks(npcResponse);
+                foreach (var chunk in chunks)
+                {
+                    _speechQueue.Enqueue(chunk);
+                }
+
+                _bubbleTimer = 0;
+                _isWaitingForApi = false;
             }
             catch (Exception ex)
             {
                 ModEntry.Logger?.Log($"Error al procesar la interacción de voz: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
                 ShowBubble(npcName, "Lo siento, me he distraído...");
+                _isWaitingForApi = false;
             }
+        }
+
+        private List<string> SplitTextIntoChunks(string text, int maxLength = 60)
+        {
+            var chunks = new List<string>();
+            if (string.IsNullOrWhiteSpace(text)) return chunks;
+
+            char[] punctuation = { '.', ',', '?', '!' };
+            int currentIndex = 0;
+
+            while (currentIndex < text.Length)
+            {
+                int remainingLength = text.Length - currentIndex;
+                if (remainingLength <= maxLength)
+                {
+                    chunks.Add(text.Substring(currentIndex).Trim());
+                    break;
+                }
+
+                // Look for punctuation *after* maxLength first
+                int splitIndex = text.IndexOfAny(punctuation, currentIndex + maxLength);
+
+                // If no punctuation is found after maxLength, look backwards from maxLength
+                if (splitIndex == -1)
+                {
+                    splitIndex = text.LastIndexOfAny(punctuation, currentIndex + maxLength);
+                }
+
+                // If still no punctuation found within the block, just split at space
+                if (splitIndex == -1 || splitIndex < currentIndex)
+                {
+                    splitIndex = text.LastIndexOf(' ', currentIndex + maxLength);
+                }
+
+                // If no space is found, force split at maxLength
+                if (splitIndex == -1 || splitIndex <= currentIndex)
+                {
+                    splitIndex = currentIndex + maxLength;
+                }
+                else
+                {
+                    // Include the punctuation character in the chunk
+                    if (Array.IndexOf(punctuation, text[splitIndex]) != -1)
+                    {
+                        splitIndex++;
+                    }
+                }
+
+                string chunk = text.Substring(currentIndex, splitIndex - currentIndex).Trim();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    chunks.Add(chunk);
+                }
+                currentIndex = splitIndex;
+            }
+
+            return chunks;
         }
 
         private void ShowBubble(string npcName, string text)
@@ -389,6 +462,25 @@ namespace LivingCompanionsValley.Services
             // Optimización: Solo ejecutar la lógica 2 veces por segundo (cada 30 ticks)
             if (e.IsMultipleOf(30))
             {
+                if (!_speechQueue.IsEmpty)
+                {
+                    double currentTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
+                    if (_bubbleTimer == 0 || currentTime - _bubbleTimer >= 3.5)
+                    {
+                        if (_speechQueue.TryDequeue(out string? fragment) && fragment != null)
+                        {
+                            ShowBubble(_targetNpc.Name, fragment);
+                            _bubbleTimer = currentTime;
+
+                            if (_speechQueue.IsEmpty)
+                            {
+                                // Restart the idle timer when the NPC finishes talking
+                                _lastInteractionTime = currentTime;
+                            }
+                        }
+                    }
+                }
+
                 // Condición de Salida: Cambio de locación
                 if (Game1.player.currentLocation != _targetNpc.currentLocation)
                 {
@@ -406,8 +498,8 @@ namespace LivingCompanionsValley.Services
                 }
 
                 // Condición de Salida: Timeout por inactividad máxima de 15 segundos
-                // Solo se cuenta el tiempo si NO estamos grabando la voz actualmente
-                if (!_isRecordingVoice)
+                // Solo se cuenta el tiempo si NO estamos grabando la voz, NO estamos esperando a la API y la cola de voz está vacía
+                if (!_isRecordingVoice && !_isWaitingForApi && _speechQueue.IsEmpty)
                 {
                     double timeSinceLastInteraction = Game1.currentGameTime.TotalGameTime.TotalSeconds - _lastInteractionTime;
                     if (timeSinceLastInteraction > 15.0)
