@@ -155,12 +155,12 @@ namespace LivingCompanionsValley.Services
                     {
                         ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Debug);
                     }
-                    
+
                     // Congelar al NPC usando la propiedad nativa del motor (detiene los pies y el movimiento)
                     // sin corromper el horario como lo hace movementPause, ni fallar visualmente como speed.
                     // Se usa Reflection de SMAPI porque 'freezeMotion' es un campo protegido.
                     _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(true);
-                    
+
                     // Iniciar grabación de audio
                     if (_waveIn != null && !_isRecordingVoice)
                     {
@@ -256,10 +256,10 @@ namespace LivingCompanionsValley.Services
             if (e.Button == _config.VoiceKey)
             {
                 ModEntry.Logger?.Log("Captura de voz finalizada. Procesando (el NPC espera)...", LogLevel.Debug);
-                
+
                 // Dejamos de grabar, pero MANTENEMOS la interacción activa para que espere
                 _isRecordingVoice = false;
-                
+
                 // Registramos el momento exacto en que soltamos el botón para el temporizador de inactividad
                 _lastInteractionTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
 
@@ -314,7 +314,7 @@ namespace LivingCompanionsValley.Services
             try
             {
                 ModEntry.Logger?.Log($"Iniciando procesamiento de audio ({audioData.Length} bytes) para {npcName}...", LogLevel.Info);
-                
+
                 _isWaitingForApi = true;
 
                 // 1. Transcribir audio
@@ -346,7 +346,6 @@ namespace LivingCompanionsValley.Services
                 }
 
                 _bubbleTimer = 0;
-                _currentBubbleDelay = 0;
                 _isWaitingForApi = false;
             }
             catch (Exception ex)
@@ -357,7 +356,7 @@ namespace LivingCompanionsValley.Services
             }
         }
 
-        private List<string> SplitTextIntoChunks(string text, int maxLength = 45)
+        private List<string> SplitTextIntoChunks(string text, int maxLength = 60)
         {
             var chunks = new List<string>();
             if (string.IsNullOrWhiteSpace(text)) return chunks;
@@ -438,7 +437,7 @@ namespace LivingCompanionsValley.Services
             if (_targetNpc == null) return;
 
             ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
-            
+
             // Liberamos el congelamiento nativo para que el NPC retome su ruta y animaciones
             _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(false);
 
@@ -476,13 +475,12 @@ namespace LivingCompanionsValley.Services
                 if (!_speechQueue.IsEmpty)
                 {
                     double currentTime = Game1.currentGameTime.TotalGameTime.TotalSeconds;
-                    if (_bubbleTimer == 0 || currentTime - _bubbleTimer >= _currentBubbleDelay)
+                    if (_bubbleTimer == 0 || currentTime - _bubbleTimer >= 3.5)
                     {
                         if (_speechQueue.TryDequeue(out string? fragment) && fragment != null)
                         {
                             ShowBubble(_targetNpc.Name, fragment);
                             _bubbleTimer = currentTime;
-                            _currentBubbleDelay = Math.Max(2.0, fragment.Length * 0.07);
 
                             if (_speechQueue.IsEmpty)
                             {
