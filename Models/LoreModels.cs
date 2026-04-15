@@ -1,17 +1,19 @@
 namespace LivingCompanionsValley.Models
 {
-    public readonly record struct NpcIdentityDto(
-        string NpcName,
-        string CorePersonality,
-        string RelationshipStatus,
-        string TonalStyle,
-        string SystemPrompt
-    );
+    public struct NpcIdentityDto
+    {
+        public string NpcName { get; set; }
+        public string CorePersonality { get; set; }
+        public string RelationshipStatus { get; set; }
+        public string TonalStyle { get; set; }
+        public string SystemPrompt { get; set; }
+    }
 
-    public readonly record struct NpcExtendedLoreDto(
-        string FragmentId,
-        string Category,
-        string Content,
-        float[]? Vector
-    );
+    public struct NpcExtendedLoreDto
+    {
+        public string FragmentId { get; set; }
+        public string Category { get; set; }
+        public string Content { get; set; }
+        public float[]? Vector { get; set; }
+    }
 }

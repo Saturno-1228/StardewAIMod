@@ -127,6 +127,7 @@ Este apartado compila y refina todas las metas arquitectónicas y mecánicas dis
 - **Red de Rumores Probabilísticos:** Si ocurre un gran evento (te casas con Haley), Emily (su hermana) tiene un 95% de enterarse ese día. Krobus tiene un 0%. Al día siguiente, los NPCs con la información te abordarán sobre el tema.
 - **Multiplicadores Dinámicos:** Sebastian (introvertido) ganará menos puntos de amistad por charla que Sam (extrovertido), requiriendo más constancia para llegar a los 10 corazones.
 - **Moralidad y Precios (Consecuencias):** Tratar mal a todos los aldeanos bajará tu "Moral Global". Esto hará que la probabilidad de que te regalen cosas sea 0, e incluso podemos engancharnos al código de las tiendas para que Pierre te suba los precios un 20%.
+- **Escucha Pasiva (Overhearing):** Los NPCs a corta distancia podrán registrar fragmentos de charlas ajenas en su propia memoria a corto plazo. (A implementar en el futuro).
 
 ### 4. Nuevas Mecánicas de Inmersión Sensorial
 - **Reacciones al Volumen de Voz:** Ya que usamos Whisper localmente, el código puede medir los decibelios. Susurrarle a un NPC lo hace reaccionar diferente a si le gritas.
