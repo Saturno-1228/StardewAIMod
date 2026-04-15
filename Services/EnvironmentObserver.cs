@@ -35,11 +35,7 @@ namespace LivingCompanionsValley.Services
             string heldItemName = "nada";
             if (player.CurrentItem != null)
             {
-                string displayName = ItemRegistry.GetData(player.CurrentItem.QualifiedItemId)?.DisplayName;
-                if (!string.IsNullOrEmpty(displayName))
-                {
-                    heldItemName = displayName;
-                }
+                heldItemName = ItemRegistry.GetData(player.CurrentItem.QualifiedItemId)?.DisplayName ?? "nada";
             }
 
             return new EnvironmentSnapshot(timeOfDay, season, isRaining, healthPercent, heldItemName);

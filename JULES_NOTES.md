@@ -199,3 +199,8 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 * Implementado un `readonly struct EnvironmentSnapshot` para evitar la recolección de basura (Garbage Collection).
 * Agregada lógica para traducir variables numéricas del juego (hora y porcentaje de salud) en descripciones semánticas naturales para mejorar el contexto en los Prompts del LLM.
 * Implementada extracción de nombres de ítems en Stardew Valley 1.6 usando la caché nativa (`ItemRegistry.GetData`).
+
+### Fase 5: Sistema de Lore Estructurado
+* Se implementaron los modelos de datos base para el sistema de lore de los NPCs utilizando la estrategia de "Cero Asignaciones" con `readonly record struct` en `Models/LoreModels.cs` (`NpcIdentityDto` y `NpcExtendedLoreDto`).
+* Se implementó un contexto de serialización `LoreJsonContext` heredando de `JsonSerializerContext` para la generación de código fuente JSON de forma eficiente y así evitar la reflexión en tiempo de ejecución.
+* Se realizó una limpieza técnica en `EnvironmentObserver.cs` solucionando el warning `CS8600` utilizando el operador null-coalescing para asignar el nombre del objeto o el fallback `"nada"` directamente.
