@@ -28,9 +28,10 @@ namespace LivingCompanionsValley.Services
         /// <summary>
         /// Envía un mensaje a la API de Venice y devuelve la respuesta.
         /// </summary>
+        /// <param name="systemPrompt">El prompt del sistema construido con contexto.</param>
         /// <param name="userMessage">El mensaje transcrito del jugador.</param>
         /// <returns>La respuesta del NPC generada por la IA.</returns>
-        public async Task<string> GetNpcResponseAsync(string npcName, string userMessage)
+        public async Task<string> GetNpcResponseAsync(string systemPrompt, string userMessage)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -44,7 +45,7 @@ namespace LivingCompanionsValley.Services
                     model = ModelName,
                     messages = new[]
                     {
-                        new { role = "system", content = $"Eres {npcName} de Stardew Valley. Responde de manera corta y natural a lo que te dice el granjero." },
+                        new { role = "system", content = systemPrompt },
                         new { role = "user", content = userMessage }
                     },
                     venice_parameters = new
