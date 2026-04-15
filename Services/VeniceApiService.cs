@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using StardewModdingAPI;
 
-namespace LivingCompanionsValley.Services
+namespace StardewLivingValley.Services
 {
     /// <summary>
     /// Servicio para comunicarse con la API de Venice AI.
@@ -16,7 +16,7 @@ namespace LivingCompanionsValley.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private const string ApiUrl = "https://api.venice.ai/api/v1/chat/completions";
-        private const string ModelName = "olafangensan-glm-4.7-flash-heretic:disable_thinking=true";
+        private const string ModelName = "e2ee-glm-4-7-flash-p";
 
         public VeniceApiService(string apiKey)
         {
