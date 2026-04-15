@@ -1,91 +1,106 @@
 using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
+using System.IO;
 using System.Threading.Tasks;
 using StardewModdingAPI;
+using Whisper.net;
+using Whisper.net.Ggml;
 
 namespace StardewLivingValley.Services
 {
     /// <summary>
-    /// Servicio para comunicarse con la API de Venice AI.
+    /// Servicio que envuelve la lógica asíncrona de Whisper.net para transcripción offline.
+    /// Descarga automáticamente el modelo la primera vez que se necesita.
     /// </summary>
-    public class VeniceApiService
+    public class LocalWhisperService
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _apiKey;
-        private const string ApiUrl = "https://api.venice.ai/api/v1/chat/completions";
-        private const string ModelName = "e2ee-glm-4-7-flash-p";
+        private WhisperFactory? _factory;
+        private WhisperProcessor? _processor;
+        private readonly string _modelPath;
+        private bool _isInitialized;
 
-        public VeniceApiService(string apiKey)
+        public LocalWhisperService(IModHelper helper)
         {
-            _apiKey = apiKey;
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            // Ruta del modelo en la carpeta de assets
+            _modelPath = Path.Combine(helper.DirectoryPath, "Assets", "ggml-base.bin");
         }
 
         /// <summary>
-        /// Envía un mensaje a la API de Venice y devuelve la respuesta.
+        /// Inicializa el procesador de Whisper (descargando el modelo si no existe).
         /// </summary>
-        /// <param name="userMessage">El mensaje transcrito del jugador.</param>
-        /// <returns>La respuesta del NPC generada por la IA.</returns>
-        public async Task<string> GetNpcResponseAsync(string npcName, string userMessage)
+        public async Task InitializeAsync()
         {
-            if (string.IsNullOrWhiteSpace(_apiKey))
+            if (_isInitialized) return;
+
+            try
             {
-                return "[Error] La Venice API Key no está configurada en SecretConfig.json.";
+                // Si el modelo no existe, se descarga
+                if (!File.Exists(_modelPath))
+                {
+                    ModEntry.Logger?.Log("El modelo Whisper no se encontró en la carpeta de Assets. Descargando ggml-base.bin (puede tardar un momento)...", LogLevel.Info);
+                    
+                    // Asegurarse de que el directorio exista
+                    string? dir = Path.GetDirectoryName(_modelPath);
+                    if (dir != null && !Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(GgmlType.Base);
+                    using var fileWriter = File.OpenWrite(_modelPath);
+                    await modelStream.CopyToAsync(fileWriter);
+                    
+                    ModEntry.Logger?.Log("Modelo descargado exitosamente.", LogLevel.Info);
+                }
+
+                ModEntry.Logger?.Log("Inicializando modelo de Whisper local...", LogLevel.Trace);
+                _factory = WhisperFactory.FromPath(_modelPath);
+                
+                // Español por defecto si se desea, o "auto"
+                _processor = _factory.CreateBuilder()
+                    .WithLanguage("es")
+                    .Build();
+
+                _isInitialized = true;
+                ModEntry.Logger?.Log("Whisper inicializado correctamente.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"Error crítico al inicializar Whisper.net: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        /// <summary>
+        /// Transcribe un buffer de audio de 32-bit floats a texto.
+        /// </summary>
+        public async Task<string> TranscribeAudioAsync(float[] floatAudioBuffer)
+        {
+            if (!_isInitialized || _processor == null)
+            {
+                return "[Error] Whisper no está inicializado.";
             }
 
             try
             {
-                var requestBody = new
+                // Whisper.net espera los datos en un stream de floats o un array procesado
+                string resultText = "";
+                await foreach (var result in _processor.ProcessAsync(floatAudioBuffer))
                 {
-                    model = ModelName,
-                    messages = new[]
-                    {
-                        new { role = "system", content = $"Eres {npcName} de Stardew Valley. Responde de manera corta y natural a lo que te dice el granjero." },
-                        new { role = "user", content = userMessage }
-                    },
-                    venice_parameters = new
-                    {
-                        include_venice_system_prompt = false
-                    }
-                };
-
-                var jsonContent = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PostAsync(ApiUrl, jsonContent);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string errorContent = await response.Content.ReadAsStringAsync();
-                    ModEntry.Logger?.Log($"Error de Venice API: {response.StatusCode} - {errorContent}", LogLevel.Error);
-                    return "[Error] Hubo un problema al contactar a la IA.";
+                    resultText += result.Text;
                 }
 
-                var responseString = await response.Content.ReadAsStringAsync();
-                
-                // Parseando la respuesta JSON de OpenAI format
-                using JsonDocument doc = JsonDocument.Parse(responseString);
-                var root = doc.RootElement;
-                
-                if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-                {
-                    var firstChoice = choices[0];
-                    if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var content))
-                    {
-                        return content.GetString()?.Trim() ?? "[No response]";
-                    }
-                }
-
-                return "[No response] Formato de respuesta inesperado.";
+                return resultText.Trim();
             }
             catch (Exception ex)
             {
-                ModEntry.Logger?.Log($"Excepción al contactar Venice API: {ex.Message}", LogLevel.Error);
-                return "[Error] Excepción al procesar la solicitud de red.";
+                ModEntry.Logger?.Log($"Error al transcribir el audio: {ex.Message}", LogLevel.Error);
+                return "[Error] Excepción en transcripción de Whisper.";
             }
+        }
+
+        public void Dispose()
+        {
+            _processor?.Dispose();
+            _factory?.Dispose();
         }
     }
 }
