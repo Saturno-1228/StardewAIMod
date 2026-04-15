@@ -205,3 +205,8 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 * Se implementaron los modelos de datos base para el sistema de lore de los NPCs utilizando la estrategia de "Cero Asignaciones" con `readonly record struct` en `Models/LoreModels.cs` (`NpcIdentityDto` y `NpcExtendedLoreDto`).
 * Se implementó un contexto de serialización `LoreJsonContext` heredando de `JsonSerializerContext` para la generación de código fuente JSON de forma eficiente y así evitar la reflexión en tiempo de ejecución.
 * Se realizó una limpieza técnica en `EnvironmentObserver.cs` solucionando el warning `CS8600` utilizando el operador null-coalescing para asignar el nombre del objeto o el fallback `"nada"` directamente.
+
+## Iteration: Enrutador de Almas (LoreRoutingService)
+* Se implementó el servicio `LoreRoutingService` utilizando un patrón Productor-Consumidor (`System.Threading.Channels`) para ingerir archivos JSON de personalidades concurrentemente durante la carga sin bloquear el hilo principal.
+* Se agregó manejo de errores robusto dentro de los consumidores para prevenir que un JSON malformado corrompa la carga del juego, y `Task.WhenAll` para sincronizar con la pantalla de carga.
+* Se configuró el caché de identidades `NpcIdentityCache` como `public static readonly ConcurrentDictionary` para el acceso global instantáneo sin instanciación repetida, utilizando el deserializador source-generated (`LoreJsonContext.Default.NpcIdentityDto`).
