@@ -24,6 +24,10 @@ namespace LivingCompanionsValley.Services
         private readonly VeniceApiService _veniceApiService;
         private readonly LocalVoskService _voskService;
 
+        private readonly EnvironmentObserver _envObserver = new();
+        private readonly ShortTermMemoryManager _memoryManager = new();
+        private readonly PromptBuilderService _promptBuilder = new();
+
         private NPC? _targetNpc;
         private bool _isInteractionActive;
         private bool _isRecordingVoice;
@@ -353,13 +357,34 @@ namespace LivingCompanionsValley.Services
 
                 ModEntry.Logger?.Log($"Usuario dijo (Transcrito): {transcription}", LogLevel.Info);
 
-                // 2. Obtener respuesta de Venice
+                // 2. Orquestación del Prompt de Venice
+                ModEntry.Logger?.Log("Construyendo Prompt del Sistema...", LogLevel.Info);
+
+                // Capturar contexto del entorno
+                var environmentSnapshot = _envObserver.CaptureSnapshot(Game1.player, Game1.player.currentLocation);
+                string environmentContext = _envObserver.BuildPromptContext(environmentSnapshot);
+
+                // Recuperar memoria reciente
+                string recentMemory = _memoryManager.GetRecentContext(npcName);
+
+                // Construir el Súper Prompt
+                string systemPrompt = _promptBuilder.BuildSystemPrompt(npcName, environmentContext, recentMemory);
+
+                ModEntry.Logger?.Log($"System Prompt Generado:\n{systemPrompt}", LogLevel.Info);
+
+                // 3. Obtener respuesta de Venice
                 ModEntry.Logger?.Log("Llamando a Venice API para obtener respuesta...", LogLevel.Info);
-                string npcResponse = await _veniceApiService.GetNpcResponseAsync(npcName, transcription);
+                string npcResponse = await _veniceApiService.GetNpcResponseAsync(systemPrompt, transcription);
 
                 ModEntry.Logger?.Log($"{npcName} responde: {npcResponse}", LogLevel.Info);
 
-                // 3. Mostrar la respuesta en la UI principal
+                // Guardar la interacción en la memoria para futuras conversaciones, siempre que no sea un error
+                if (!npcResponse.StartsWith("[Error]"))
+                {
+                    _memoryManager.AddInteraction(npcName, transcription, npcResponse);
+                }
+
+                // 4. Mostrar la respuesta en la UI principal
                 var chunks = SplitTextIntoChunks(npcResponse);
                 foreach (var chunk in chunks)
                 {
