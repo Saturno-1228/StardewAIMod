@@ -193,3 +193,9 @@ Soy tu usuario. Revisa continuamente esta sección "Master Design Document" ante
 - Adjusted `.csproj` MSBuild targets to gracefully ignore MacOS artifacts cleanup since they were specific to Whisper.
 - Refactored `VoiceInteractionManager.cs` to pass raw 16-bit PCM `byte[]` audio to Vosk, deleting NAudio's float[] conversion routines and handling the Vosk `JsonDocument` text property parsing reliably.
 - [X] Refinamiento UI/UX - Fase 1: Paginación de Burbujas y Ajuste de Modelo (VeniceApiService & VoiceInteractionManager)
+
+## Progreso Reciente
+* Creado el servicio `EnvironmentObserver.cs` en `Services/` para capturar el estado visual y temporal del juego para los NPCs.
+* Implementado un `readonly struct EnvironmentSnapshot` para evitar la recolección de basura (Garbage Collection).
+* Agregada lógica para traducir variables numéricas del juego (hora y porcentaje de salud) en descripciones semánticas naturales para mejorar el contexto en los Prompts del LLM.
+* Implementada extracción de nombres de ítems en Stardew Valley 1.6 usando la caché nativa (`ItemRegistry.GetData`).
