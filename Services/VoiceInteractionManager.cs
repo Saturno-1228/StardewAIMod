@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Channels;
 using StardewModdingAPI;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -35,6 +36,12 @@ namespace LivingCompanionsValley.Services
         private int _originalFacingDirection = -1;
         private double _currentBubbleDelay = 0;
 
+        // Pipeline Productor-Consumidor
+        private readonly Channel<byte[]> _audioChannel;
+        private readonly Channel<string> _transcriptionChannel;
+        private readonly Channel<string> _responseChannel;
+        private readonly System.Threading.CancellationTokenSource _cancellationTokenSource;
+
         // Microphone state using NAudio
         private WaveInEvent? _waveIn;
         private MemoryStream? _audioMemoryStream;
@@ -70,6 +77,21 @@ namespace LivingCompanionsValley.Services
             _veniceApiService = veniceApiService;
             _voskService = new LocalVoskService(helper);
 
+            // Inicialización de Pipeline de Canales
+            _cancellationTokenSource = new System.Threading.CancellationTokenSource();
+
+            var channelOptions = new BoundedChannelOptions(3)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest
+            };
+
+            _audioChannel = Channel.CreateBounded<byte[]>(channelOptions);
+            _transcriptionChannel = Channel.CreateBounded<string>(channelOptions);
+            _responseChannel = Channel.CreateBounded<string>(channelOptions);
+
+            // Arrancar hilos secundarios de procesamiento
+            StartPipelineWorkers();
+
             // Inicializar Vosk.net en background
             Task.Run(async () => await _voskService.InitializeAsync());
 
@@ -99,6 +121,24 @@ namespace LivingCompanionsValley.Services
             _helper.Events.Input.ButtonPressed += OnButtonPressed;
             _helper.Events.Input.ButtonReleased += OnButtonReleased;
             _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+        }
+
+        private void StartPipelineWorkers()
+        {
+            Task.Run(() => ProcessAudioWorkerAsync(_cancellationTokenSource.Token));
+            Task.Run(() => ProcessVeniceWorkerAsync(_cancellationTokenSource.Token));
+        }
+
+        private async Task ProcessAudioWorkerAsync(System.Threading.CancellationToken token)
+        {
+            // Esqueleto: aquí se procesará el audio extraído de _audioChannel
+            await Task.CompletedTask;
+        }
+
+        private async Task ProcessVeniceWorkerAsync(System.Threading.CancellationToken token)
+        {
+            // Esqueleto: aquí se procesará la transcripción extraída de _transcriptionChannel
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -506,6 +546,19 @@ namespace LivingCompanionsValley.Services
 
         public void Dispose()
         {
+            try
+            {
+                _cancellationTokenSource.Cancel();
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger?.Log($"Error al cancelar el CancellationTokenSource: {ex.Message}", LogLevel.Error);
+            }
+            finally
+            {
+                _cancellationTokenSource.Dispose();
+            }
+
             if (_waveIn != null)
             {
                 _waveIn.DataAvailable -= OnDataAvailable;
