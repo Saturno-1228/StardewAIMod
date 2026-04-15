@@ -114,8 +114,6 @@ namespace LivingCompanionsValley.Services
             // Solo actuar si el botón presionado coincide con el configurado
             if (e.Button == _config.VoiceKey)
             {
-                ModEntry.Logger?.Log("Iniciando captura de voz...", LogLevel.Debug);
-
                 NPC? nearestNpc = GetNearestValidNpc(3f);
 
                 if (nearestNpc != null)
@@ -134,8 +132,6 @@ namespace LivingCompanionsValley.Services
                         return;
                     }
 
-                    ModEntry.Logger?.Log($"NPC válido encontrado: {nearestNpc.Name}. Iniciando interacción y deteniendo...", LogLevel.Debug);
-
                     // Guardamos la referencia y activamos el estado de interacción
                     _targetNpc = nearestNpc;
                     _isInteractionActive = true;
@@ -151,10 +147,6 @@ namespace LivingCompanionsValley.Services
                         _targetNpc.Halt();
                         _targetNpc.facePlayer(Game1.player);
                     }
-                    else
-                    {
-                        ModEntry.Logger?.Log($"{_targetNpc.Name} está en una animación especial. Omitiendo Halt() para no romperla.", LogLevel.Debug);
-                    }
                     
                     // Congelar al NPC usando la propiedad nativa del motor (detiene los pies y el movimiento)
                     // sin corromper el horario como lo hace movementPause, ni fallar visualmente como speed.
@@ -164,13 +156,11 @@ namespace LivingCompanionsValley.Services
                     // Iniciar grabación de audio
                     if (_waveIn != null && !_isRecordingVoice)
                     {
-                        ModEntry.Logger?.Log("Intentando iniciar la grabación de audio con NAudio...", LogLevel.Trace);
                         _audioMemoryStream = new MemoryStream();
                         try
                         {
                             _waveIn.StartRecording();
                             _isRecordingVoice = true; // Marcamos que estamos grabando
-                            ModEntry.Logger?.Log("Micrófono grabando activamente.", LogLevel.Debug);
                         }
                         catch (Exception ex)
                         {
@@ -183,10 +173,6 @@ namespace LivingCompanionsValley.Services
                     {
                         ModEntry.Logger?.Log("No se puede iniciar grabación: el objeto _waveIn es nulo.", LogLevel.Error);
                     }
-                }
-                else
-                {
-                    ModEntry.Logger?.Log("No se encontró ningún NPC válido cerca.", LogLevel.Debug);
                 }
             }
         }
@@ -255,8 +241,6 @@ namespace LivingCompanionsValley.Services
             // Solo actuar si el botón soltado coincide con el configurado
             if (e.Button == _config.VoiceKey)
             {
-                ModEntry.Logger?.Log("Captura de voz finalizada. Procesando (el NPC espera)...", LogLevel.Debug);
-                
                 // Dejamos de grabar, pero MANTENEMOS la interacción activa para que espere
                 _isRecordingVoice = false;
                 
@@ -280,8 +264,6 @@ namespace LivingCompanionsValley.Services
                         byte[] finalAudioData = _audioMemoryStream.ToArray();
                         _audioMemoryStream.Dispose();
                         _audioMemoryStream = null;
-
-                        ModEntry.Logger?.Log($"Se detuvo la grabación. Tamaño del buffer capturado: {finalAudioData.Length} bytes.", LogLevel.Trace);
 
                         // Validar si el audio grabado es demasiado corto (ej. toque rápido por error).
                         // Asumiendo formato de 16 bits (2 bytes) a 16kHz, 1 segundo son 32,000 bytes.
@@ -325,7 +307,6 @@ namespace LivingCompanionsValley.Services
 
                 if (string.IsNullOrWhiteSpace(transcription) || transcription.Contains("[Error]"))
                 {
-                    ModEntry.Logger?.Log($"La transcripción fue nula, vacía o devolvió error: '{transcription}'. Cancelando llamado a Venice.", LogLevel.Debug);
                     _isWaitingForApi = false;
                     return;
                 }
@@ -437,8 +418,6 @@ namespace LivingCompanionsValley.Services
         {
             if (_targetNpc == null) return;
 
-            ModEntry.Logger?.Log($"{reason} Finalizando interacción con {_targetNpc.Name}.", LogLevel.Debug);
-            
             // Liberamos el congelamiento nativo para que el NPC retome su ruta y animaciones
             _helper.Reflection.GetField<bool>(_targetNpc, "freezeMotion").SetValue(false);
 
