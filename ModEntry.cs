@@ -55,16 +55,15 @@ namespace LivingCompanionsValley
             Logger!.Log("Living Companions Valley loaded successfully.", LogLevel.Info);
 
             // Preparación de eventos base
-            helper.Events.GameLoop.GameLaunched += OnGameLaunched;
             helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
         }
 
-        /// <summary>
-        /// Evento que se dispara después de que el juego es lanzado.
-        /// Ideal para cargar APIs externas, GenericModConfigMenu, etc.
-        /// </summary>
-        private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
+        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
+            // 1. Iniciar la ingesta de Lore (Base de datos)
+            _ = _loreRoutingService?.IngestAllLoreAsync(this.Helper.DirectoryPath);
+
+            // 2. Inicializar el motor de Voz de forma asíncrona
             Task.Run(async () =>
             {
                 if (_voiceManager != null)
@@ -72,11 +71,6 @@ namespace LivingCompanionsValley
                     await _voiceManager.InitializeVoskAsync();
                 }
             });
-        }
-
-        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
-        {
-            _ = _loreRoutingService?.IngestAllLoreAsync(this.Helper.DirectoryPath);
         }
     }
 }
