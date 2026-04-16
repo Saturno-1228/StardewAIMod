@@ -16,8 +16,6 @@ namespace LivingCompanionsValley.Services
                 identity = new NpcIdentityDto
                 {
                     NpcName = npcName,
-                    CorePersonality = "Eres un residente de Pelican Town en Stardew Valley. Eres amigable y siempre estás dispuesto a charlar un momento.",
-                    RelationshipStatus = "Conoces al granjero de la zona.",
                     TonalStyle = "Hablas de forma casual y educada.",
                     SystemPrompt = $"Eres {npcName}. Responde de forma natural a las preguntas o comentarios del granjero."
                 };
@@ -26,8 +24,6 @@ namespace LivingCompanionsValley.Services
             // --- [IDENTIDAD] ---
             sb.AppendLine("[IDENTIDAD]");
             sb.AppendLine($"SystemPrompt: {identity.SystemPrompt}");
-            sb.AppendLine($"CorePersonality: {identity.CorePersonality}");
-            sb.AppendLine($"RelationshipStatus: {identity.RelationshipStatus}");
             sb.AppendLine($"TonalStyle: {identity.TonalStyle}");
             sb.AppendLine();
 

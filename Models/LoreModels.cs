@@ -3,8 +3,6 @@ namespace LivingCompanionsValley.Models
     public struct NpcIdentityDto
     {
         public string NpcName { get; set; }
-        public string CorePersonality { get; set; }
-        public string RelationshipStatus { get; set; }
         public string TonalStyle { get; set; }
         public string SystemPrompt { get; set; }
     }
