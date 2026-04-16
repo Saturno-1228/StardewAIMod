@@ -96,9 +96,6 @@ namespace LivingCompanionsValley.Services
             // Arrancar hilos secundarios de procesamiento
             StartPipelineWorkers();
 
-            // Inicializar Vosk.net en background
-            Task.Run(async () => await _voskService.InitializeAsync());
-
             // Inicializar Micrófono con NAudio
             try
             {
@@ -143,6 +140,11 @@ namespace LivingCompanionsValley.Services
         {
             // Esqueleto: aquí se procesará la transcripción extraída de _transcriptionChannel
             await Task.CompletedTask;
+        }
+
+        public async Task InitializeVoskAsync()
+        {
+            await _voskService.InitializeAsync();
         }
 
         /// <summary>
