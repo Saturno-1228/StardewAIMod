@@ -15,8 +15,6 @@ namespace LivingCompanionsValley.Models
         public string NpcName { get; set; } = string.Empty;
         public string TonalStyle { get; set; } = string.Empty;
         public string SystemPrompt { get; set; } = string.Empty;
-
-        public NpcIdentityDto() { }
     }
 
     public struct NpcExtendedLoreDto
@@ -24,8 +22,6 @@ namespace LivingCompanionsValley.Models
         public string FragmentId { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
-        public float[]? Vector { get; set; }
-
-        public NpcExtendedLoreDto() { }
+        public float[]? Vector { get; set; } = null;
     }
 }
