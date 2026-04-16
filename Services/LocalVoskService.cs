@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using StardewModdingAPI;
 using System.Text.Json;
 using Vosk;
+using LivingCompanionsValley.Utils;
 
 namespace LivingCompanionsValley.Services
 {
@@ -24,7 +25,13 @@ namespace LivingCompanionsValley.Services
         {
             _helper = helper;
             _modDirectory = _helper.DirectoryPath;
-            _modelPath = Path.Combine(_modDirectory, "Assets", "vosk-model-small-es");
+
+            // Fase 1: Soporte Multilingüe
+            string modelFolderName = StardewValley.LocalizedContentManager.CurrentLanguageCode == StardewValley.LocalizedContentManager.LanguageCode.es
+                ? "vosk-model-small-es"
+                : "vosk-model-small-en-us";
+
+            _modelPath = Path.Combine(_modDirectory, "Assets", modelFolderName);
 
             RegisterDllImportResolver();
         }
@@ -134,6 +141,12 @@ namespace LivingCompanionsValley.Services
                     {
                         ModEntry.Logger?.Log($"Error al parsear el JSON de Vosk: {ex.Message}", LogLevel.Error);
                     }
+                }
+
+                // Fase 2: Normalización Fonética
+                if (!string.IsNullOrWhiteSpace(finalTrimmedText))
+                {
+                    finalTrimmedText = PhoneticNormalizer.NormalizeTranscript(finalTrimmedText, LoreRoutingService.KnownNpcs);
                 }
 
                 stopwatch.Stop();

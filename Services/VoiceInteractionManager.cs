@@ -367,8 +367,14 @@ namespace LivingCompanionsValley.Services
                 // Recuperar memoria reciente
                 string recentMemory = _memoryManager.GetRecentContext(npcName);
 
+                string playerName = "Granjero";
+                if (Context.IsWorldReady && Game1.player != null && !string.IsNullOrWhiteSpace(Game1.player.Name))
+                {
+                    playerName = Game1.player.Name;
+                }
+
                 // Construir el Súper Prompt
-                string systemPrompt = _promptBuilder.BuildSystemPrompt(npcName, environmentContext, recentMemory);
+                string systemPrompt = _promptBuilder.BuildSystemPrompt(npcName, environmentContext, recentMemory, playerName);
 
                 ModEntry.Logger?.Log($"System Prompt Generado:\n{systemPrompt}", LogLevel.Info);
 

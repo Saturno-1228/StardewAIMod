@@ -5,7 +5,7 @@ namespace LivingCompanionsValley.Services
 {
     public class PromptBuilderService
     {
-        public string BuildSystemPrompt(string npcName, string environmentContext, string recentMemory)
+        public string BuildSystemPrompt(string npcName, string environmentContext, string recentMemory, string playerName)
         {
             var sb = new StringBuilder();
 
@@ -46,7 +46,8 @@ namespace LivingCompanionsValley.Services
 
             // --- [REGLAS DEL SISTEMA] ---
             sb.AppendLine("[REGLAS DEL SISTEMA]");
-            sb.AppendLine("Regla absoluta: Responde a la última interacción del granjero en 1 o 2 oraciones cortas como máximo. Mantente estrictamente en personaje.");
+            sb.AppendLine("Regla absoluta: Responde a la última interacción en 1 o 2 oraciones cortas como máximo. Mantente estrictamente en personaje.");
+            sb.AppendLine($"Responde a la última interacción de {playerName}. Dirígete a él/ella por su nombre. Evita usar la palabra 'granjero' a menos que sea estrictamente necesario.");
 
             return sb.ToString().TrimEnd();
         }
