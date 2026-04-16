@@ -67,6 +67,7 @@ namespace LivingCompanionsValley.Services
             if (_isInitialized) return;
 
             // Fase 1: Soporte Multilingüe
+            // Se evalúa el idioma aquí porque el juego ya ha cargado sus preferencias de usuario (ej. OnSaveLoaded)
             string modelFolderName = StardewValley.LocalizedContentManager.CurrentLanguageCode == StardewValley.LocalizedContentManager.LanguageCode.es
                 ? "vosk-model-small-es"
                 : "vosk-model-small-en-us";
