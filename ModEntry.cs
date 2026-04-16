@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using LivingCompanionsValley.Configuration;
@@ -64,7 +65,13 @@ namespace LivingCompanionsValley
         /// </summary>
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
-            // Espacio preparado para futuras fases.
+            Task.Run(async () =>
+            {
+                if (_voiceManager != null)
+                {
+                    await _voiceManager.InitializeVoskAsync();
+                }
+            });
         }
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)

@@ -13,7 +13,7 @@ namespace LivingCompanionsValley.Services
     {
         private readonly IModHelper _helper;
         private readonly string _modDirectory;
-        private readonly string _modelPath;
+        private string _modelPath = string.Empty;
 
         private Model? _model;
         private VoskRecognizer? _recognizer;
@@ -25,13 +25,6 @@ namespace LivingCompanionsValley.Services
         {
             _helper = helper;
             _modDirectory = _helper.DirectoryPath;
-
-            // Fase 1: Soporte Multilingüe
-            string modelFolderName = StardewValley.LocalizedContentManager.CurrentLanguageCode == StardewValley.LocalizedContentManager.LanguageCode.es
-                ? "vosk-model-small-es"
-                : "vosk-model-small-en-us";
-
-            _modelPath = Path.Combine(_modDirectory, "Assets", modelFolderName);
 
             RegisterDllImportResolver();
         }
@@ -72,6 +65,12 @@ namespace LivingCompanionsValley.Services
         public async Task InitializeAsync()
         {
             if (_isInitialized) return;
+
+            // Fase 1: Soporte Multilingüe
+            string modelFolderName = StardewValley.LocalizedContentManager.CurrentLanguageCode == StardewValley.LocalizedContentManager.LanguageCode.es
+                ? "vosk-model-small-es"
+                : "vosk-model-small-en-us";
+            _modelPath = Path.Combine(_modDirectory, "Assets", modelFolderName);
 
             try
             {
