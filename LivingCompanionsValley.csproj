@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="LiteDB" Version="5.0.21" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
     <PackageReference Include="Vosk" Version="0.3.38" />

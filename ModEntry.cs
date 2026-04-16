@@ -19,6 +19,8 @@ namespace LivingCompanionsValley
         private SecretConfig? _secretConfig;
         private VoiceInteractionManager? _voiceManager;
         private VeniceApiService? _veniceApiService;
+        private DatabaseService? _databaseService;
+        private LoreRoutingService? _loreRoutingService;
 
         /// <summary>
         /// El método de entrada invocado por SMAPI.
@@ -43,6 +45,8 @@ namespace LivingCompanionsValley
             }
 
             // Inicializar servicios principales
+            _databaseService = new DatabaseService(this.Helper.DirectoryPath);
+            _loreRoutingService = new LoreRoutingService(Logger!, _databaseService);
             _veniceApiService = new VeniceApiService(_secretConfig.VeniceApiKey);
             _voiceManager = new VoiceInteractionManager(helper, _config, _veniceApiService);
 
@@ -51,6 +55,7 @@ namespace LivingCompanionsValley
 
             // Preparación de eventos base
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
+            helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
         }
 
         /// <summary>
@@ -60,6 +65,11 @@ namespace LivingCompanionsValley
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
             // Espacio preparado para futuras fases.
+        }
+
+        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
+        {
+            _ = _loreRoutingService?.IngestAllLoreAsync(this.Helper.DirectoryPath);
         }
     }
 }

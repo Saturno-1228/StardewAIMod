@@ -16,10 +16,12 @@ namespace LivingCompanionsValley.Services
         public static readonly ConcurrentDictionary<string, NpcIdentityDto> NpcIdentityCache = new();
         public static readonly List<string> KnownNpcs = new();
         private readonly IMonitor _monitor;
+        private readonly DatabaseService _databaseService;
 
-        public LoreRoutingService(IMonitor monitor)
+        public LoreRoutingService(IMonitor monitor, DatabaseService databaseService)
         {
             _monitor = monitor;
+            _databaseService = databaseService;
         }
 
         private void EnsureNpcFoldersExist(string charactersPath)
@@ -124,7 +126,16 @@ namespace LivingCompanionsValley.Services
                             }
                             else if (fileName.StartsWith("02") || fileName.StartsWith("03") || fileName.StartsWith("04") || fileName.StartsWith("05"))
                             {
-                                // TODO: Enrutar a LiteDB v6 en la siguiente fase.
+                                string npcName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "Unknown";
+                                string categoryName = Path.GetFileNameWithoutExtension(fileName);
+
+                                using var stream = File.OpenRead(file);
+                                var stringList = await JsonSerializer.DeserializeAsync<List<string>>(stream, LoreJsonContext.Default.ListString);
+
+                                if (stringList != null)
+                                {
+                                    _databaseService.SyncLoreCategory(npcName, categoryName, stringList);
+                                }
                             }
                         }
                         catch (Exception ex)
